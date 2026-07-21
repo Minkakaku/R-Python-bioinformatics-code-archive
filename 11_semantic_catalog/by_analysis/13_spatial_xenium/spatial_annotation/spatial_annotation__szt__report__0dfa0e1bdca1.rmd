@@ -1,0 +1,575 @@
+---
+title: "<center>空间转录组测序分析报告（10x Visium HD）</center>"
+author:
+  - name: "<center>杭州广科安德生物科技有限公司</center>"
+  - name: "<center>ztt@cwmda.com songzhentao@cwmda.com</center>" 
+date:
+  - "<center>`r Sys.Date()`</center>"
+runtime: static
+output:
+  html_document:
+    keep_md: false
+    toc: yes
+    toc_float: yes
+    theme: paper
+    number_sections: true
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, out.width = "90%", message = FALSE, warning = FALSE)
+```
+
+<!-- <style type ="text/css">body .main-container {    max-width: 1500px;    margin-left: 100px;    margin-right: 100px;} td { font-size: 15px; text-align: center; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} th { font-size: 15px; text-align: center; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif"; font-weight: 600;} h1 { font-size: 25px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h2 { font-size: 22px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h3 { font-size: 20px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h4 { font-size: 18px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h5 {  line-height: 200%;  text-align: center;  font-weight: 600;  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} img {    margin-left: auto;    margin-right:auto;    display:block;}p {    line-height: 180%;    font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";    text-align: justify;    font-size: 15px;} -->
+<!-- </style> -->
+
+
+# 项目信息
+
+```{r, layout="l-body-outset"}
+library(kableExtra)
+# dt <- data.frame(
+#   基本信息 = c('项目编号', '项目名称', '客户单位', '项目联系人', '切片数量'), 
+#   项目详情 = c('demo', '1个小鼠脑样本切片空间转录组测序', 'demo', 'demo', '1个'))
+dt <- read.csv("data/project_info.csv", check.names = FALSE)
+dt %>%
+  kbl(align = "c", booktabs = TRUE) %>% row_spec(0, bold = TRUE, font_size=18, background = '#14B8E5') %>%
+kableExtra::kable_styling(position = "left", latex_options = c("striped", "hold_position"), stripe_color = "gray!6") %>% kable_classic(full_width = T, html_font = "Cambria")
+```
+
+<strong> 样本信息 </strong>  
+
+
+```{r, layout="l-body-outset"}
+library(tidyverse)
+
+dt <- read.csv("data/Annoation.csv")
+
+dt %>%
+  kbl(align = "c", booktabs = TRUE) %>% row_spec(0, bold = TRUE, font_size=18, background = '#14B8E5') %>%
+kableExtra::kable_styling(position = "left", latex_options = c("striped", "hold_position"), stripe_color = "gray!6") %>% kable_classic(full_width = T, html_font = "Cambria")
+```
+
+# 技术简介
+
+&emsp;&emsp;空间转录组学是指从⼀个完整的组织样本中产⽣全部的转录组数据，从而能够定位和区分功能基因在特定组织区域内的活
+跃表达，为研究和诊断提供宝贵的⻅解。作为⼀项突破性的技术，它允许科学家们检测组织样本中的所有基因活动，并绘制活
+动发⽣的位置。该技术已经带来了新的发现，将有助于科学家更好地理解疾病和⽣物学过程。10x空间转录组最新技术Visium HD使得空转迈入单细胞精度时代，基于Visium CytAssist的工作流程提供一流数据，精细化解析复杂微小结构，助力肿瘤免疫微环境等研究。Visium HD系统将现有Visium平台的分辨率从55 μm spots提高到2x2 μm正方形，从而实现单细胞水平的空间组织结构分析。
+
+```{r echo=FALSE, fig.align='center'}
+knitr::include_graphics('figures/visium_hd.png')
+```
+
+Visium HD空间基因表达载玻片包含两个6.5 x 6.5 mm 捕获区域，其中寡核苷酸连续排列在数百万个2 x 2μm正方形中，且芯片无组织间隙，实现单细胞分辨率空间转录组测序的同时达到了全组织覆盖度。**数据分析可以以2 μm为最小分辨率，也可以展示多个Bin的分辨率，我们以16x16μm Bin为最小分辨率进行后续分析。**
+
+# 实验方法与分析流程
+
+## 实验方法
+
+Visium HD目前仅适用于人和小鼠的FFPE样本，样本准备要求与Visium CytAssist（V2）相同。为获得理想的测序数据结果，应确保组织样本的细胞核形态正常、有高质量的RNA以及在实验过程中不会出现脱片等异常情况。Visium HD的实验流程与Visium CytAssist（V2）相同，包括以下主要实验步骤：
+
+```{r echo=FALSE, fig.align='center'}
+knitr::include_graphics('figures/tech_router.png')
+```
+
+（1）样本准备与成像：将FFPE样本切片贴于载玻片（10x推荐品牌）有效转片区域内，进行脱蜡、HE染色与图像扫描、脱色和解交联，然后立即进行探针杂交。
+
+（2）探针过夜杂交并清洗后，进行探针连接。
+
+（3）在CytAssist转片仪上完成转片。
+
+（4）将Visium HD玻片置于PCR仪上进行探针延伸。
+
+（5）洗脱并收回探针进行预扩增与文库构建。
+
+（6）高通量测序与数据分析。
+
+## 生物信息分析
+
+测序完成后，我们使用10x Genomics官方分析软件Space Ranger v3.0 (https://www.10xgenomics.com/support/software/space-ranger/latest) 对原始数据进行数据过滤，以visium slide的显微镜图像（TIFF或JPEG格式）和Fastq文件作为输入来计算组织的空间基因表达。
+
+```{r echo=FALSE, fig.align='center', out.width="80%"}
+knitr::include_graphics('figures/FOR-spaceranger-IV.png')
+```
+
+# 数据结果
+
+## 数据分析流程及内容
+
+建议数据分析基本流程如下图所示：
+
+```{r echo=FALSE, fig.align='center', out.width="95%"}
+knitr::include_graphics('figures/analysis_pipeline.png')
+```
+
+## 数据质检（QC）结果
+
+### 细胞表达QC {.tabshow}   
+
+低质量、空细胞、双细胞或者多细胞会使得数据中的细胞表现出异常的基因数量。一个细胞检测到的所有UMI数量和检测到的基因数量高度相关，也会呈现出现异常高或者异常低的数据趋势。 低质量、死亡细胞可能会呈现出更多的线粒体污染，其表现为过高的线粒体比例。 根据一个细胞的检测到的基因的数值、检测到的基因Count的总数值和线粒体比例进行QC和细胞过滤。
+
+```{r, include=FALSE}
+library(tidyverse)
+
+sample_info <- read.csv("data/Annoation.csv")
+# sample_info <- # read.csv("data/Annoation.csv")
+#   data.frame(
+#     sample = c('DZZ_Saline27', 'SYZ_NH4_40'),
+#     group  = c('DZZ_Saline', 'SYZ_NH4')
+#   )
+sample_ls <- sample_info$group
+```
+
+```{r, echo=FALSE, results='asis'}
+
+sample_ls %>%
+  walk(function(x){
+    path <- file.path("materials_for_rmd", str_glue("1 qc plot - {x}.png"))
+    
+    stopifnot(file.exists(path))
+    
+    cat(str_glue("#### {x}  \n\n"))
+    # knitr::include_graphics(path)
+    cat(str_glue("<img src='{path}' width='90%'  align = center />"))
+    cat("  \n\n")
+  })
+
+
+
+```
+
+
+###  细胞过滤 {.tabshow}   
+
+```{r, echo=FALSE, results='asis', fig.align='center', out.width="95%"}
+
+sample_ls %>%
+  walk(function(x){
+    path <- file.path("materials_for_rmd", str_glue("1 qc plot - pass - {x}.png"))
+    
+    stopifnot(file.exists(path))
+    
+    cat(str_glue("#### {x}  \n\n"))
+    # knitr::include_graphics(path)
+    cat(str_glue("<img src='{path}' width='90%'  align = center />"))
+    cat("  \n\n")
+  })
+
+```
+
+## 数据分析结果
+
+### 降维与聚类
+
+针对样本内的bin和基因的UMI序列数,经过过滤之后的表达矩阵，使用Scanpy/Seurat进行降维聚类分析：
+
+  1）首先进行数据的表达量均一化，对测序深度进行校正，消除技术噪音；
+
+  2）然后选取高可变基因（细胞间高特征基因），用于提高细胞分群准确度（默认值为3000）；
+
+  3）进一步对表达量值均一化处理后，利用PCA分析对数据进行降维，PCA降维是一种线性降维方法，运用方差分解，将高维的数据映射到低维的空间中；然后基于SNN聚类算法对细胞进行聚类和分群，构建细胞间的聚类关系；
+
+  4）最后将降维后的数据传递到t-SNE与UMAP进行可视化展示，细胞之间的基因表达模式越相似，在t-SNE/UMAP图中的距离也越接近。
+
+### 聚类结果可视化 {.tabset .tabset-fade .tabset-pills}
+
+降维完成后，我们基于图的聚类方法，将细胞嵌入图后使用K-近邻方法在表达相似的细胞之间画出边缘，从而将这个图分割成高度关联的类别。我们利用UMAP对聚类得到的结果进行可视化展示,结果如下：
+
+#### 空间切片聚类 {.tabshow}  
+
+```{r, echo=FALSE, results='asis'}
+
+sample_ls %>%
+  walk(function(x){
+    path <- file.path("materials_for_rmd", str_glue("3 spatial plot - annotation - {x}.png"))
+    
+    stopifnot(file.exists(path))
+    
+    cat(str_glue("##### {x}  \n\n"))
+    # knitr::include_graphics(path)
+    cat(str_glue("<img src='{path}' width='75%'  align = center />"))
+    cat("  \n\n")
+  })
+
+```
+
+#### 细胞聚类
+
+```{r, echo=FALSE, out.width="75%"}
+knitr::include_graphics("materials_for_rmd/2 dimplot - cluster.png")
+```
+
+### 差异基因筛选 {.tabset .tabset-fade .tabset-pills}
+
+通过上述聚类分析，已经将细胞区分成了不同的cluster。根据每个cluster中的基因表达情况，可以鉴定某个cluster和其他cluster之间的差异表达基因，从而确定不同cluster特征性表达基因（marker基因）。 基于降维聚类得到的结果，利用Scanpy的非参数检验方法（wilcox秩和检验），将cluster0的细胞与其余cluster的细胞进行差异表达分析，以此类推， 鉴定每个cluster中显著差异表达的marker基因，默认筛选标准为logFC>1 且Thred < 0.05（parameter is: FDR）。
+
+#### Top5差异基因dot plot
+
+```{r out.width="100%"}
+knitr::include_graphics("materials_for_rmd/4 top5 gene dotplot.png")
+```
+
+### 差异基因空间切片可视化 {.tabshow}   
+
+各Cluster中基因差异表达top1(按log2FC值排序)的基因,在空间切片中可视化⻅下图：
+
+```{r, echo=FALSE, results='asis'}
+sample_ls %>%
+  walk(function(x){
+    path <- file.path("materials_for_rmd", str_glue("4 top1 gene spatial - {x}.png"))
+    
+    stopifnot(file.exists(path))
+    
+    cat(str_glue("#### {x}  \n\n"))
+    # knitr::include_graphics(path)
+    cat(str_glue("<img src='{path}' width='90%'  align = center />"))
+    cat("  \n\n")
+  })
+```
+
+### Top1差异基因UMAP
+
+各Cluster中基因差异表达top1(按log2FC值排序)的基因表达UMAP,⻅下图：
+
+```{r out.width="90%"}
+knitr::include_graphics("materials_for_rmd/4 top1 gene umap.png")
+```
+
+
+<!-- ###  富集分析(by cluster) {.tabset .tabset-fade .tabset-pills} -->
+
+###  富集分析(by cluster)  {.tabshow}   
+
+我们对聚类后的各Cluster差异基因进行功能富集富集分析，富集分析结果如下：
+
+
+```{r, echo=FALSE, results='asis'}
+
+0:100 %>%
+  walk(function(x){
+    path <- file.path("materials_for_rmd", str_glue("5 enrichment dotplot - cluster_{x}.png"))
+    if(!file.exists(path)) {
+      # print(path)
+      return()
+    }
+    
+    cat(str_glue("#### cluster_{x}  \n\n"))
+    # knitr::include_graphics(path)
+    cat(str_glue("<img src='{path}' width='75%'  align = center />"))
+    cat("  \n\n")
+  })
+
+
+```
+
+
+
+# 参考文献
+
+[1] SpaceRanger：https://www.10xgenomics.com/support/software/space-ranger/latest.
+
+[2] Scanpy：Wolf, F. A. ,  P. Angerer , and  F. J. Theis . "Scanpy for analysis of large-scale single-cell gene expression data." Cold Spring Harbor Laboratory 1(2017).
+
+[3] Seurat：Hao Y, Stuart T, Kowalski MH, Choudhary S, Hoffman P, Hartman A, Srivastava A, Molla G, Madad S, Fernandez-Granda C, Satija R. Dictionary learning for integrative, multimodal and scalable single-cell analysis. Nat Biotechnol. 2024 Feb;42(2):293-304. 
+
+[4] bimod：Mcdavid A , Finak G , Chattopadyay P K , et al. Data Exploration, Quality Control and Testing in Single-Cell qPCR-Based Gene Expression Experiments[J]. Bioinformatics, 2013, 29(4):461-467.
+
+[5] t-SNE：Maaten L V D, Hinton G. Visualizing Data using t-SNE[J]. Journal of Machine Learning Research, 2008, 9(2605):2579-2605.
+
+[6] Kanehisa, M., M. Araki, et al. (2008). KEGG for linking genomes to life and the environment. Nucleic acids research.(KEGG)
+
+[7] Zheng G X, Terry J M, Belgrader P, et al. Massively parallel digital transcriptional profiling of single cells[J]. Nature Communications, 2017, 8:14049.
+
+<!-- css for toc -->
+```{css, echo=FALSE}
+/*TOC*/
+#TOC{
+    border-radius: 0px;
+    font-size: 1.4rem;
+}
+#TOC > p{
+    text-align: center;
+    background: rgba(55,126,184,1);
+    padding: 5px 0px;
+    color:white;
+}
+
+.list-group-item.active, 
+.list-group-item.active:hover, 
+.list-group-item.active:focus {
+    background-color: rgba(55,126,184,0.8);
+}
+
+.list-group-item:hover, 
+.list-group-item:focus {
+    background-color: rgba(55,126,184,0.5);
+    color:white;
+}
+
+```
+
+<!-- css for font -->
+```{css, echo=FALSE}
+body .main-container {    
+    max-width: 1500px;    
+    margin-left: 100px;   
+    margin-right: 100px;
+} 
+
+td{ 
+    font-size: 15px; 
+    text-align: center; 
+    font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+}
+
+th{ 
+    font-size: 15px;
+    text-align: center;
+    font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+    font-weight: 600;
+} 
+
+h1{ 
+    font-size: 25px;
+    font-weight: 600;
+    color: #377EB8; 
+    font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+}
+
+h2{ 
+    font-size: 22px;
+    font-weight: 600; 
+    color: #377EB8; 
+    font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+} 
+
+h3{ 
+    font-size: 20px;
+    font-weight: 600; 
+    color: #377EB8; 
+    font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+} 
+
+h4{ 
+    font-size: 18px; 
+    font-weight: 600;
+    color: #377EB8; 
+    font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+} 
+
+h5{  
+    line-height: 200%;  
+    text-align: center; 
+    font-weight: 600; 
+    font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+} 
+
+img{    
+    margin-left: auto;   
+    margin-right:auto;    
+    display:block;
+}
+
+p{    
+    line-height: 180%;    
+    font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+    text-align: justify;    
+    font-size: 15px;
+}
+```
+
+<!-- css for tabshow and tabset-diy -->
+```{css, echo=FALSE}
+/*tab show*/
+select{
+    padding: 5px;
+    padding-right: 20px;
+    margin-bottom: 20px;
+    margin-right: 5%;
+/*    float: left; */
+}
+select:hover{
+    box-shadow: 0px 0px 2px 2px #AAB2D1;
+    cursor: pointer;
+}
+p::before{ /*清除浮动的影响*/
+    content: "";
+    display: block;
+    clear: both;
+}
+
+.tabclear::after{
+    content: '';
+    display: block;
+    clear: both;
+}
+
+/*tabset diy*/
+.tab-ul{
+    margin: 0px;
+    padding: 0px;
+    padding-top:10px;
+}
+
+.tab-ul::before, .tab-ul::after{
+    content: '';
+    clear: both;
+    display: block;
+}
+
+.tab-li{
+    padding: 4px 20px;
+    margin-right: 3px;
+    list-style: none;
+    background: #eee;
+    cursor: pointer;
+    float: left;
+    transition: background 0.5s;
+}
+.tab-li.active{
+    border-top: 3px solid #8d95aa;
+    border-left: 1px solid #8d95aa;
+    border-right: 1px solid #8d95aa;
+    background: white;
+    padding: 6px 20px;
+    margin-bottom: -1px;
+}
+
+.tab-li:hover{
+    background: #bbc1da;
+}
+
+.tabset-diy .section{
+    border: 1px solid #8d95aa;
+}
+```
+
+
+<!-- 目录内容调整 -->
+
+```{js, echo=FALSE}
+var clock;
+$(function(){
+  clock = setTimeout(() => {
+    $('#TOC').prepend('<p style="font-size:1.6rem;">目录</p>')
+    clearTimeout(clock);
+  }, 1)
+})
+
+```
+
+
+<!-- 折叠布局，tabshow控制 兼容ie-->
+
+```{js, echo = FALSE}
+$(function(){
+
+  // 所有需要折叠子元素的div，class有tabshow
+  var tabs = $('.tabshow');
+  
+  for(var i =0; i < tabs.length; i++){
+    var tablist,  // 需要折叠的子元素div
+        id_list,  // 折叠div的id
+        text_list; // 折叠div的text，用于select的option中显示
+    
+    tablist = tabs.eq(i).children('.section');
+    if(tablist.length < 2) {continue;}
+    
+    id_list = tablist.map(function(){ return '#' + $(this).attr('id') }).get().map(x => x.replace('.', "\\.") );
+    text_list = tablist.map(function(){ return $(this).children(':not("div")').eq(0).hide().text() });
+    text_list = text_list.map(function(){ return this.replace(/^[0-9]+(\.[0-9]+)*\s{1}/g, '') }).get();
+    
+    // 构造select元素
+    var select = $('<select>').attr('id', 'tab-select' + i);
+    for(var j=0; j < id_list.length; j++){
+      var op = $('<option>').attr('value', id_list[j]).text(text_list[j]);
+      if(j === 0){
+        op = op.attr('selected', 'selected');
+      }
+      select.append(op);
+    }
+    
+    // select使用一个div包裹
+    select = $('<div>').append(select);
+    // 如果有clear类属性，则将select的父div加上clear属性
+    var className = tablist.eq(0).attr('class');
+    if(/clear/.test(className)){
+      select.addClass('tabclear')
+    }
+    // 将select嵌入DOM中
+    tablist.eq(0).before(select);
+    
+    // 初始化，默认显示第一个子元素div，其他隐藏
+    $(id_list[0]).show().siblings('.section').hide();
+    
+    // 绑定select的change事件，动态改变div的显隐
+    $('#'+'tab-select' + i).change(function(){
+      var val = $(this).val();
+      $(val).show().siblings('.section').hide();
+    })
+  }
+
+})
+
+
+```
+
+<!-- 自定义tabset（默认tabset无法作用于h6之后的标题） 兼容ie-->
+
+```{js, echo = FALSE}
+$(function(){
+
+  // 所有需要折叠子元素的div，class有tabset-diy
+  var tabs = $('.tabset-diy');
+  
+  for(var i = 0; i < tabs.length; i++){
+    var tablist,  // 需要折叠的子元素div
+        id_list,  // 折叠div的id
+        text_list; // 折叠div的text，用于select的option中显示
+    
+    tablist = tabs.eq(i).children('.section');
+    if(tablist.length < 2) {continue;}
+    
+    id_list = tablist.map(function() { return '#' + $(this).attr('id') }).get();.map(x => x.replace('.', "\\.") )
+    text_list = tablist.map(function(){ return $(this).children().eq(0).hide().text(); });
+    text_list = text_list.map(function(){ return this.replace(/^[0-9]+(\.[0-9]+)*\s{1}/g, '') }).get();
+    
+    // 构造ul元素
+    var ul = $('<ul>').attr('id', 'tab-ul' + i).addClass('tab-ul');
+    for(var j=0; j < id_list.length; j++){
+      var li = $('<li>').addClass('tab-li')
+                        .attr('data-item', id_list[j])
+                        .text(text_list[j]);
+      if(j === 0){
+        li = li.addClass('active');
+      }
+      ul.append(li);
+    }
+    
+    // 将select嵌入DOM中
+    tablist.eq(0).before(ul);
+    
+    // 初始化，默认显示第一个子元素div，其他隐藏
+    $(id_list[0]).show().siblings('.section').hide();
+    
+    // 绑定ul的li的click事件，动态改变div的显隐
+    $('#'+'tab-ul' + i + ' > li').click(function(){
+      // li的active class改变
+      $(this).addClass('active').siblings().removeClass('active')
+      // li对应的div的显隐
+      var item = $(this).attr('data-item');
+      $(item).show().siblings('.section').hide();
+    })
+  }
+
+})
+
+
+```
+
+
+
+
+
+
+
+

@@ -48,8 +48,19 @@ Python/Scanpy 项目可先参考：
 07_scenic_regulon/                SCENIC / pySCENIC
 08_scores_enrichment/             score、dotplot、富集及相关报告模板
 09_spatial_related/               与 Xenium/空间转录组直接相关的可复用脚本
+10_other_users/                   其他分析人员代码的原始哈希归档
+11_semantic_catalog/              按用途区分同名代码的语义整理层
 legacy_versions/                  内容不同但不建议作为首选的旧版本
 ```
+
+## 同名代码怎么选
+
+不要按文件名直接去重。历史项目里常有多份 `CellChat.R`、`monocle.R` 或 `report.rmd`，名称相同但分别用于单数据集、双组比较、多组比较、绘图或批量运行。
+
+- `11_semantic_catalog/code_catalog.tsv` 提供全库场景索引。
+- `11_semantic_catalog/duplicate_original_names.tsv` 集中列出同名的独立版本。
+- `11_semantic_catalog/03_cellchat/` 已把 CellChat 代码按单数据集、双组、多组、组数待确认、比较后处理、绘图和批处理拆开，并使用来源人员与 SHA-256 生成唯一文件名。
+- `10_other_users/code/` 始终保留原始归档；语义整理层只建立逐字节副本和索引。
 
 ## 去重与溯源
 

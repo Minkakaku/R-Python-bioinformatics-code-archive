@@ -1,0 +1,1 @@
+Rscript /mnt/NexData_file/share/scRNA-tools/pip_cellchat.R --rds /mnt/NexData_file/home/wmx/Project/SC2603132229-01/shouhou3/adata_mapping.rds --outpath /mnt/NexData_file/home/wmx/Project/SC2603132229-01/shouhou3//cellchat/ --splitby group --species mouse --comparison "A:B,B:A"

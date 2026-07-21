@@ -1,0 +1,21 @@
+options(timeout = 6000)
+library(tidyverse)
+library(Seurat)
+getwd()
+library(patchwork)
+options(java.parameters = '-Xmx10g')  # options('java.parameters')
+library(rJava)
+library(RBioFormats)
+library(ggpubr)
+library(SeuratDisk)
+library(ggrepel)
+#library(loupeR)
+library(reticulate)
+
+python <- use_python("/home/szt/miniforge3/envs/rpy/bin/python")
+
+#H5ad转rds----
+###用conda env tools里的sceasy包convertFormat()
+library('sceasy')
+adata <- convertFormat('sub_CN1.h5ad', to = 'seurat')
+saveRDS(adata, 'sub_CN1.rds')

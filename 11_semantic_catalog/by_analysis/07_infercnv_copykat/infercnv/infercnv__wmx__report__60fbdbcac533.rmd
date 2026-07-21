@@ -1,0 +1,135 @@
+---
+title: "<center>inferCNV分析报告</center>"
+author:
+  - name: "<center>杭州广科安德生物科技有限公司</center>"
+runtime: static
+output:
+  html_document:
+    keep_md: false
+    toc: yes
+    toc_float: yes
+    theme: paper
+    number_sections: true
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, out.width = "90%", message = FALSE, warning = FALSE)
+```
+
+```{=html}
+<style type ="text/css">body .main-container {    max-width: 1500px;    margin-left: 100px;    margin-right: 100px;} td { font-size: 15px; text-align: center; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} th { font-size: 15px; text-align: center; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif"; font-weight: 600;} h1 { font-size: 25px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h2 { font-size: 22px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h3 { font-size: 20px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h4 { font-size: 18px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h5 {  line-height: 200%;  text-align: center;  font-weight: 600;  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} img {    margin-left: auto;    margin-right:auto;    display:block;}p {    line-height: 180%;    font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";    text-align: justify;    font-size: 15px;}
+</style>
+```
+
+# inferCNV
+
+## 目的
+
+  inferCNV用于推断细胞的染色体拷贝数变异（CNV）情况，是目前单细胞数据鉴定恶性细胞的最经典常用的工具。
+
+  拷贝数变异（CNV）：指特定 DNA
+片段的拷贝数量在不同个体基因组中有所不同。这些结构差异可能是通过重复、缺失或其他变化产生的，可能影响长段的
+DNA。CNV变异是肿瘤细胞最显著的特征。
+
+## CNV强度热图
+
+  热图展示了不同细胞在各染色体区域的相对表达强度。图中每一行代表所属亚群的一个细胞，每一列表示对应染色体上的一个基因。红色代表扩增，蓝色代表缺失，颜色越深代表变异越显著。
+
+```{r echo=FALSE, fig.align='center'}
+knitr::include_graphics('chromosome_heatmap.png')
+```
+
+## 转录组聚类UMAP图 {.tabset .tabset-fade .tabset-pills}
+
+  该图基于转录组数据的umap图，左图不同颜色代表不同的CNV聚类；中图不同颜色代表不同细胞类型；右图展示了各细胞的CNV分数，颜色越亮，CNV分数越高，恶性越强。
+
+### by cell
+
+  对每一个细胞进行CNV评分。
+
+```{r out.width="100%"}
+knitr::include_graphics('cnv_celltype_bycell.png')
+```
+
+~注 **左:** CNV cluster；中**:** cell type；**右:** CNV score；~
+
+### by cluster
+
+  对每一个CNV聚类进行CNV评分。
+
+```{r out.width="100%"}
+knitr::include_graphics('cnv_celltype_bycluster.png')
+```
+
+~注 **左:** CNV cluster；中**:** cell type；**右:** CNV score；~
+
+## CNV聚类UMAP图 {.tabset .tabset-fade .tabset-pills}
+
+  该图基于CNV分析的umap图，左图不同颜色代表不同的CNV聚类；中图不同颜色代表不同细胞类型；右图展示了各细胞的CNV分数，颜色越亮，CNV分数越高，恶性越强。
+
+### by cell {.tabset .tabset-fade .tabset-pills}
+
+  对每一个细胞进行CNV评分。
+
+```{r out.width="100%"}
+knitr::include_graphics('cnv_cnvleiden_bycell.png')
+```
+
+~注 **左:** CNV cluster；中**:** cell type；**右:** CNV score；~
+
+### by cluster {.tabset .tabset-fade .tabset-pills}
+
+  对每一个CNV聚类进行CNV评分。
+
+```{r out.width="100%"}
+knitr::include_graphics('cnv_cnvleiden_bycluster.png')
+```
+
+~注 **左:** CNV cluster；中**:** cell type；**右:** CNV score；~
+
+## CNV聚类提琴图 {.tabset .tabset-fade .tabset-pills}
+
+  横轴代表不同的CNV
+cluster，纵轴代表细胞的CNV分数，每一个点代表一个细胞。通过对比不同cluster的CNV分数差异筛选出其中恶性的cluster。
+
+```{r out.width="100%"}
+knitr::include_graphics('cnv_vlnplot.png')
+```
+
+~注 **横轴:** CNV cluster；**纵轴:** CNV score；~
+
+## CNV注释UMAP图 {.tabset .tabset-fade .tabset-pills}
+
+  根据CNV分数对细胞进行注释，橙色为恶性细胞，蓝色为正常细胞。
+
+```{r out.width="50%"}
+knitr::include_graphics('umap_cnv.png')
+```
+
+## CNV分数表格 {.tabset .tabset-fade .tabset-pills}
+
+  不同细胞的CNV聚类与CNV分数。
+
+```{r, layout="l-body-outset"}
+library(DT)
+
+data <- read.csv('meta_inferCNV.xls', sep='\t', header=TRUE, check.names = FALSE)
+colnames(data)[1] <- "barcode"
+
+datatable(
+  data,
+  options = list(
+    pageLength = 10,  # 每页显示的行数
+    lengthMenu = c(10, 25, 50, 100),  # 可选的每页行数
+    paging = TRUE,  # 启用分页
+    searching = TRUE,  # 启用搜索框
+    ordering = TRUE  # 启用列排序
+  ),
+  class = 'display compact'
+)
+```
+
+~注 barcode：细胞标签；cell_type：细胞类型定义；cnv_leiden: CNV聚类；**cnv_score_cell:** 每个细胞的CNV得分；cnv_score_cluster：每个CNV聚类的平均CNV得分；cnv_status：细胞的CNV状态~

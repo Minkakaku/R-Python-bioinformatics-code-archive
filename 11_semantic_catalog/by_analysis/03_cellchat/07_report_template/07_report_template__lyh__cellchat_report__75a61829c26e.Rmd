@@ -1,0 +1,963 @@
+---
+title: "单细胞细胞通讯分析（CellChat）报告"
+author: "广科安德"
+date: "`r format(Sys.Date(), '%Y-%m-%d')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+    df_print: paged
+params:
+  input_dir: "."
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center"
+)
+
+library(knitr)
+library(tools)
+
+`%||%` <- function(x, y) {
+  if (is.null(x) || length(x) == 0 || all(is.na(x)) || !nzchar(as.character(x[[1]]))) y else x
+}
+
+normalize_slash <- function(path) {
+  gsub("\\\\", "/", path)
+}
+
+input_dir <- normalizePath(params$input_dir, winslash = "/", mustWork = TRUE)
+metadata_dir <- file.path(input_dir, "metadata")
+single_root <- file.path(input_dir, "single")
+compare_root <- file.path(input_dir, "compare")
+logs_root <- file.path(input_dir, "logs")
+
+read_manifest <- function(path, cols, sep = ",") {
+  if (!file.exists(path)) {
+    out <- as.data.frame(setNames(replicate(length(cols), character(0), simplify = FALSE), cols))
+    return(out)
+  }
+  df <- read.table(
+    path,
+    sep = sep,
+    header = TRUE,
+    stringsAsFactors = FALSE,
+    check.names = FALSE,
+    quote = "\"",
+    comment.char = ""
+  )
+  missing <- setdiff(cols, names(df))
+  for (col in missing) df[[col]] <- character(nrow(df))
+  df[, cols, drop = FALSE]
+}
+
+sample_manifest <- read_manifest(
+  file.path(metadata_dir, "sample_manifest.csv"),
+  c("sample", "input", "subset_col", "subset_group")
+)
+
+compare_manifest <- read_manifest(
+  file.path(metadata_dir, "compare_manifest.csv"),
+  c("sample1", "sample2", "outdir")
+)
+
+failed_tasks <- read_manifest(
+  file.path(logs_root, "failed_tasks.tsv"),
+  c("task_type", "name", "log_file"),
+  sep = "\t"
+)
+
+sample_outdir <- function(sample) {
+  normalize_slash(file.path(single_root, sample))
+}
+
+compare_title <- function(row) {
+  sprintf("%s_VS_%s", row$sample1, row$sample2)
+}
+
+compare_outdir <- function(row) {
+  outdir <- row$outdir %||% ""
+  if (nzchar(outdir)) return(normalize_slash(outdir))
+  normalize_slash(file.path(compare_root, compare_title(row)))
+}
+
+find_existing <- function(paths) {
+  paths[file.exists(paths)]
+}
+
+first_existing <- function(paths) {
+  hit <- find_existing(paths)
+  if (length(hit) == 0) return(NA_character_)
+  normalize_slash(hit[[1]])
+}
+
+find_png <- function(dir_path, pattern = "\\.png$") {
+  if (!dir.exists(dir_path)) return(character(0))
+  normalize_slash(list.files(dir_path, pattern = pattern, full.names = TRUE))
+}
+
+find_any_file <- function(paths) {
+  hit <- find_existing(paths)
+  if (length(hit) == 0) return(NA_character_)
+  normalize_slash(hit[[1]])
+}
+
+trim_output_path <- function(path) {
+  if (is.na(path) || !nzchar(path)) return(NA_character_)
+  path <- normalize_slash(path)
+  parts <- strsplit(path, "/", fixed = TRUE)[[1]]
+  lower_parts <- tolower(parts)
+
+  idx <- which(lower_parts == "output")
+  if (length(idx) == 0) idx <- grep("output", lower_parts)
+  if (length(idx) == 0) {
+    root_name <- basename(input_dir)
+    idx <- match(root_name, parts)
+  } else {
+    idx <- idx[[1]]
+  }
+
+  if (is.na(idx) || idx < 1) return(path)
+  paste(parts[idx:length(parts)], collapse = "/")
+}
+
+render_path <- function(path) {
+  if (is.na(path) || !nzchar(path)) return("<code>未检测到对应文件</code>")
+  sprintf("<code>%s</code>", trim_output_path(path))
+}
+
+render_note <- function(text) {
+  sprintf("<div class='report-note'>%s</div>", text)
+}
+
+render_table <- function(df) {
+  if (nrow(df) == 0) return(render_note("当前模块暂无可展示信息。"))
+  kable(df, format = "html", table.attr = "class='table table-report'")
+}
+
+render_image_card <- function(path, title, desc = NULL) {
+  if (is.na(path) || !file.exists(path)) {
+    return(render_note(sprintf("未检测到“%s”对应图片，已跳过该示例。", title)))
+  }
+
+  desc_html <- if (is.null(desc) || !nzchar(desc)) "" else sprintf("<p>%s</p>", desc)
+  sprintf(
+    paste0(
+      "<div class='img-card'>",
+      "<div class='img-card-header'><div class='img-card-title'>%s</div></div>",
+      "<div class='img-card-body'>",
+      "%s",
+      "<img src='%s' />",
+      "</div>",
+      "</div>"
+    ),
+    title,
+    desc_html,
+    path
+  )
+}
+
+read_preview_table <- function(path, n = 5) {
+  if (!file.exists(path)) return(data.frame())
+  ext <- tolower(file_ext(path))
+  out <- tryCatch({
+    if (ext == "csv") {
+      read.csv(path, stringsAsFactors = FALSE, check.names = FALSE)
+    } else if (ext %in% c("txt", "tsv")) {
+      read.table(path, sep = "\t", header = TRUE, stringsAsFactors = FALSE, check.names = FALSE)
+    } else {
+      data.frame()
+    }
+  }, error = function(e) data.frame())
+
+  if (nrow(out) == 0) return(out)
+  head(out, n)
+}
+
+list_ordered_entries <- function(path) {
+  if (!dir.exists(path)) return(character(0))
+  entries <- list.files(path, full.names = TRUE, no.. = TRUE)
+  entries[order(!dir.exists(entries), tolower(basename(entries)))]
+}
+
+build_subtree_lines <- function(path, prefix = "", max_depth = 2, max_entries = 8, level = 1) {
+  if (!dir.exists(path) || level > max_depth) return(character(0))
+
+  entries <- list_ordered_entries(path)
+  shown <- entries[seq_len(min(length(entries), max_entries))]
+  out <- character(0)
+
+  for (i in seq_along(shown)) {
+    entry <- shown[[i]]
+    is_last <- i == length(shown) && length(entries) <= max_entries
+    connector <- if (is_last) "`-- " else "|-- "
+    out <- c(out, paste0(prefix, connector, basename(entry)))
+    if (dir.exists(entry) && level < max_depth) {
+      child_prefix <- paste0(prefix, if (is_last) "    " else "|   ")
+      out <- c(out, build_subtree_lines(entry, child_prefix, max_depth, max_entries, level + 1))
+    }
+  }
+
+  if (length(entries) > max_entries) {
+    out <- c(out, paste0(prefix, "`-- ... (", length(entries) - max_entries, " more)"))
+  }
+
+  out
+}
+
+build_focus_tree <- function(branch_name, example_name, example_dir, child_depth = 2, child_entries = 8) {
+  root_label <- basename(trim_output_path(input_dir))
+  branch_connector <- "`-- "
+  example_prefix <- "    "
+  example_connector <- "`-- "
+
+  lines <- c(
+    root_label,
+    paste0(branch_connector, branch_name),
+    paste0(example_prefix, example_connector, example_name)
+  )
+
+  subtree_prefix <- paste0(example_prefix, "    ")
+  subtree <- build_subtree_lines(example_dir, prefix = subtree_prefix, max_depth = child_depth, max_entries = child_entries)
+  paste(c(lines, subtree), collapse = "\n")
+}
+
+describe_tree_item <- function(name, context = c("single", "compare")) {
+  context <- match.arg(context)
+
+  single_map <- c(
+    "single" = "单样本分析结果目录。",
+    "BubblePlots" = "细胞群关系对与配体-受体关系对气泡图结果目录。",
+    "Overview" = "整体细胞通讯网络总览目录。",
+    "Pathways" = "通路层面的 circle、heatmap、contribution 等结果目录。",
+    "SignalingGroups" = "信号通路功能或结构相似性分组结果目录。",
+    "SignalingRoles" = "发送者、接收者及整体角色识别结果目录。",
+    "Communication_info.csv" = "细胞通讯结果表。",
+    "Communication_info.txt" = "细胞通讯结果文本表。",
+    "cellchat_object.rds" = "单样本 CellChat 对象。"
+  )
+
+  compare_map <- c(
+    "compare" = "多组比较分析结果目录。",
+    "compareInteractions.png" = "两组间相互作用总数和强度统计图。",
+    "diffInteraction_count.png" = "两组间差异相互作用数量图。",
+    "diffInteraction_weight.png" = "两组间差异相互作用强度图。",
+    "diffInteraction_count_heatmap.png" = "两组间差异相互作用数量热图。",
+    "signalingRole_scatter.png" = "主要发送者和接收者比较结果。",
+    "signalingRole_heatmap_outgoing.png" = "细胞群 outgoing 模式比较图。",
+    "signalingRole_heatmap_incoming.png" = "细胞群 incoming 模式比较图。",
+    "signalingRole_heatmap_all.png" = "细胞群 overall 模式比较图。",
+    "DEG_Network" = "差异表达辅助识别功能失调信号的状态目录。",
+    "Diff_BubblePlots" = "上下调配体-受体关系对气泡图目录。",
+    "Shared_Pathways" = "共享通路比较结果目录。"
+  )
+
+  mapping <- if (context == "single") single_map else compare_map
+  if (name %in% names(mapping)) return(unname(mapping[[name]]))
+
+  if (grepl("^network_interactions_.*\\.png$", name)) return("整体细胞通讯网络图文件。")
+  if (grepl("\\.bubble\\.(png|pdf)$", name)) return("细胞群关系对气泡图文件。")
+  if (grepl("SignalingGroups_.*\\.png$", name)) return("信号通路相似性分组图文件。")
+  if (grepl("SignalingRole_.*\\.png$", name)) return("细胞通讯角色识别图文件。")
+  if (grepl("\\.(circle|heatmap|contribution)\\.png$", name)) return("通路层面可视化结果文件。")
+  if (grepl("^netMappingDEG_.*\\.(csv|txt|xlsx)$", name)) return("差异表达分析结果文件。")
+  if (grepl("Up-Down_Regulation\\.png$", name)) return("上下调配体-受体关系对气泡图文件。")
+  if (grepl("^deg_status\\.txt$", name)) return("DEG 模块状态说明文件。")
+
+  "该目录或文件为当前分析实际生成结果。"
+}
+
+render_focus_explanations <- function(branch_name, example_name, example_dir, context = c("single", "compare")) {
+  context <- match.arg(context)
+  root_label <- basename(trim_output_path(input_dir))
+  entries <- list_ordered_entries(example_dir)
+  names_to_describe <- c(root_label, branch_name, example_name, basename(entries))
+
+  names_to_describe <- unique(names_to_describe)
+  if (length(entries) > 8) {
+    names_to_describe <- unique(c(root_label, branch_name, example_name, basename(entries[seq_len(8)])))
+  }
+
+  desc <- vapply(names_to_describe, describe_tree_item, character(1), context = context)
+  desc[[1]] <- "结果文件夹根目录。"
+  desc[[2]] <- if (context == "single") "单样本分析结果目录。" else "多组比较分析结果目录。"
+  desc[[3]] <- if (context == "single") "当前报告示例样本目录。" else "当前报告示例比较组目录。"
+
+  paste(
+    sprintf("<p><code>%s</code>：%s</p>", names_to_describe, desc),
+    collapse = "\n"
+  )
+}
+
+example_sample <- if (nrow(sample_manifest) > 0) sample_manifest[1, , drop = FALSE] else NULL
+example_compare <- if (nrow(compare_manifest) > 0) compare_manifest[1, , drop = FALSE] else NULL
+
+example_sample_name <- if (!is.null(example_sample)) example_sample$sample[[1]] else NA_character_
+example_sample_dir <- if (!is.null(example_sample)) sample_outdir(example_sample_name) else NA_character_
+
+example_compare_name <- if (!is.null(example_compare)) compare_title(example_compare[1, ]) else NA_character_
+example_compare_dir <- if (!is.null(example_compare)) compare_outdir(example_compare[1, ]) else NA_character_
+
+software_versions <- data.frame(
+  项目 = c("R", "CellChat", "报告生成时间"),
+  信息 = c(
+    R.version.string,
+    if (requireNamespace("CellChat", quietly = TRUE)) as.character(utils::packageVersion("CellChat")) else "未检测",
+    format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+  ),
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+
+compare_info_df <- if (nrow(compare_manifest) > 0) {
+  data.frame(
+    处理组 = compare_manifest$sample2,
+    对照组 = compare_manifest$sample1,
+    命名规则 = apply(compare_manifest, 1, function(x) sprintf("%s_VS_%s", x[["sample1"]], x[["sample2"]])),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+} else {
+  data.frame()
+}
+
+sample_param_df <- if (nrow(sample_manifest) > 0) {
+  data.frame(
+    样本 = sample_manifest$sample,
+    子集字段 = sample_manifest$subset_col,
+    子集取值 = sample_manifest$subset_group,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+} else {
+  data.frame()
+}
+
+failed_tasks_view <- failed_tasks[
+  failed_tasks$task_type != "task_type" & nzchar(failed_tasks$task_type),
+  ,
+  drop = FALSE
+]
+```
+
+<style>
+body {
+  font-family: "Source Han Sans CN", "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #2f2f2f;
+  line-height: 1.85;
+  background: #ffffff;
+}
+
+@media (min-width: 1100px) {
+  .tocify {
+    width: 280px !important;
+    max-width: 280px;
+    border: 1px solid #dddddd;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.06);
+  }
+
+  .toc-content {
+    margin-left: 320px !important;
+  }
+}
+
+h1, h2, h3, h4, h5, h6, legend {
+  color: #1f1f1f;
+  font-weight: 700;
+}
+
+h1.title {
+  color: #111111;
+}
+
+a {
+  color: #2f2f2f;
+}
+
+code {
+  color: #333333;
+  background: #ffffff;
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid #dddddd;
+}
+
+.report-note {
+  margin: 0.8rem 0 1rem 0;
+  padding: 0.95rem 1.1rem;
+  background: #ffffff;
+  border-left: 5px solid #c8c8c8;
+  border-radius: 8px;
+}
+
+.report-highlight {
+  margin: 0.8rem 0 1rem 0;
+  padding: 1rem 1.1rem;
+  background: #ffffff;
+  border: 1px solid #dddddd;
+  border-radius: 10px;
+}
+
+.img-card {
+  margin: 0.8rem 0 1.25rem 0;
+  background: #ffffff;
+  border: 1px solid #dddddd;
+  border-radius: 12px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.img-card-header {
+  padding: 0.85rem 1rem 0.25rem 1rem;
+}
+
+.img-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1f1f1f;
+}
+
+.img-card-body {
+  padding: 0 1rem 1rem 1rem;
+}
+
+.img-card-body p {
+  margin-top: 0.25rem;
+  margin-bottom: 0.8rem;
+}
+
+.img-card img {
+  width: 100%;
+  display: block;
+  border-radius: 10px;
+  border: 1px solid #e3e3e3;
+  background: #fff;
+}
+
+.table-report {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.table-report thead th {
+  background: #ffffff;
+  border-bottom: 2px solid #d9d9d9;
+}
+
+.table-report th,
+.table-report td {
+  padding: 0.55rem 0.7rem !important;
+  border: 1px solid #dddddd;
+}
+
+.file-overview {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  margin: 1rem 0 1.5rem 0;
+}
+
+.file-overview-left,
+.file-overview-right {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.file-overview-right p {
+  margin: 0 0 0.45rem 0;
+}
+
+.file-overview-right code {
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .file-overview {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+
+pre {
+  background: #ffffff;
+  border: 1px solid #dddddd;
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+#TOC,
+.tocify {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.tocify ul,
+#TOC ul {
+  padding-left: 1.1rem;
+}
+
+.tocify li,
+#TOC li {
+  margin: 0.22rem 0;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.tocify a,
+#TOC a {
+  color: #2f2f2f;
+  text-decoration: none;
+}
+
+.tocify a:hover,
+#TOC a:hover {
+  color: #000000;
+  text-decoration: underline;
+}
+</style>
+
+# 基本信息
+
+## 软件及版本信息
+
+```{r}
+kable(software_versions, format = "html", table.attr = "class='table table-report'")
+```
+
+## 设置的比较组信息
+
+```{r results='asis'}
+if (nrow(compare_info_df) == 0) {
+  cat(render_note("本次任务未设置 compare 分析，或 `compare_list.csv` 为空。"))
+} else {
+  cat(render_table(compare_info_df))
+  cat(render_note("各列意义如下：第一列为处理组，第二列为对照组，后续结果默认使用“对照组_VS_处理组”的命名规则。"))
+}
+```
+
+# CellChat简介
+
+构建细胞类型图谱是单细胞转录组数据分析的主体内容，但其仍然停留在“描述性研究”的范畴，难免让人感觉意犹未尽。想要在分子层面解释疾病发生的机制，就需要对数据进行更深入的探索。这当中，细胞通讯分析就是一个很好的方向。
+
+细胞通讯（cell communication）是指细胞接收、处理和传递与环境和自身的信号的能力，它是每个生物体中所有细胞的基本属性。由配体-受体复合物介导的细胞-细胞通讯对于协调各种生物过程至关重要，如发育、分化和炎症。多种疾病与错误的细胞间交流有关，包括糖尿病、癌症和免疫相关疾病等。
+
+CellChat 是一个能够从单细胞 RNA 测序（scRNA-seq）数据中定量推断和分析细胞间通讯网络的 R 包。它需要细胞的基因表达数据作为输入，并通过整合基因表达与信号配体、受体及其辅助因子之间相互作用的先验知识来建立细胞-细胞交流的概率，进而对细胞间通讯做出预测，并提供多种可视化方法。
+
+# 结果展示
+
+```{r results='asis'}
+if (is.null(example_sample)) {
+  cat(render_note("未检测到单样本分析结果，以下单样本章节已自动跳过。"))
+} else {
+  cat(sprintf(
+    "<div class='report-highlight'><strong>单样本示例：</strong>%s<br/><strong>筛选条件：</strong>%s = %s<br/><strong>结果目录：</strong>%s</div>",
+    example_sample_name,
+    example_sample$subset_col[[1]],
+    example_sample$subset_group[[1]],
+    render_path(example_sample_dir)
+  ))
+}
+
+if (is.null(example_compare)) {
+  cat(render_note("未检测到比较分析结果，以下 compare 章节已自动跳过。"))
+} else {
+  cat(sprintf(
+    "<div class='report-highlight'><strong>比较示例：</strong>%s<br/><strong>结果目录：</strong>%s</div>",
+    example_compare_name,
+    render_path(example_compare_dir)
+  ))
+}
+```
+
+## 单个数据集结果展示
+
+```{r results='asis'}
+if (is.null(example_sample)) cat(render_note("当前没有可用于展示的单样本结果。"))
+```
+
+### 细胞通讯结果
+
+```{r results='asis'}
+if (!is.null(example_sample)) {
+  comm_file <- find_any_file(c(
+    file.path(example_sample_dir, "Communication_info.csv"),
+    file.path(example_sample_dir, "Communication_info.txt")
+  ))
+  comm_preview <- read_preview_table(comm_file, n = 5)
+
+  cat("<p>CellChat 通过使用 law of mass action，将基因表达与信号配体、受体及其辅因子之间相互作用的先验知识相结合，对细胞间通信的概率进行建模。得到的通讯结果表格如下：</p>")
+  cat(sprintf("<p><strong>输出结果见：</strong>%s</p>", render_path(comm_file)))
+  cat("<p>各列意义如下：</p>")
+  cat("<p><code>source</code>：表示信号发送细胞的类型或群组；</p>")
+  cat("<p><code>target</code>：表示信号接收细胞的类型或群组；</p>")
+  cat("<p><code>ligand</code>：表示由 source 细胞分泌的配体分子；</p>")
+  cat("<p><code>receptor</code>：表示 target 细胞上的受体分子；</p>")
+  cat("<p><code>prob</code>：表示细胞间相互作用发生的概率或置信度；</p>")
+  cat("<p><code>pval</code>：表示细胞间相互作用的统计显著性；</p>")
+  cat("<p><code>interaction_name</code>：表示配体-受体对名称；</p>")
+  cat("<p><code>interaction_name_2</code>：表示配体-受体对名称补充信息；</p>")
+  cat("<p><code>pathway_name</code>：表示相关生物学通路名称；</p>")
+  cat("<p><code>annotation</code>：表示配体-受体对分类注释；</p>")
+  cat("<p><code>evidence</code>：表示支持该互作的数据库或文献证据。</p>")
+
+  if (nrow(comm_preview) > 0) {
+    cat(render_table(comm_preview))
+  } else {
+    cat(render_note("未检测到可读取的通讯结果表。"))
+  }
+}
+```
+
+### 受体-配体层次网络可视化
+
+#### 细胞间配受体关系对结果可视化
+
+```{r results='asis'}
+if (!is.null(example_sample)) {
+  overview_dir <- file.path(example_sample_dir, "Overview")
+  overview_img <- first_existing(c(
+    file.path(overview_dir, "network_interactions_count.png"),
+    file.path(overview_dir, "network_interactions_weight.png"),
+    file.path(overview_dir, "network_interactions_cells.png")
+  ))
+
+  cat("<p>获得的细胞间的通讯网络图如下。左图为任意两个细胞组之间的相互作用次数网络图，右图为任意两个细胞组之间的相互作用强度网络图。不同颜色的实心圆表示不同细胞群，圆大小与该细胞群对应的细胞数成正比。</p>")
+  cat(sprintf("<p><strong>输出结果见：</strong>%s</p>", render_path(overview_img)))
+  cat(render_image_card(
+    overview_img,
+    "细胞间相互作用网络示例",
+    "本报告仅展示 1 张示意图，其余同类结果可在对应输出目录中查看。"
+  ))
+}
+```
+
+#### 具体配受体对结果可视化
+
+```{r results='asis'}
+if (!is.null(example_sample)) {
+  bubble_dir <- file.path(example_sample_dir, "BubblePlots")
+  bubble_img <- first_existing(find_png(bubble_dir))
+
+  cat("<p>如果当前分析的细胞群比较多，则会按照每个细胞群与其他细胞群间的关系进行绘图；如果配受体关系对较多，默认仅绘制部分结果。您在后续的数据挖掘中，如有感兴趣的配受体关系对和细胞群关系对时，可以进一步指定数据进行绘图。</p>")
+  cat(sprintf("<p><strong>输出结果见：</strong>%s</p>", render_path(bubble_dir)))
+  cat(render_image_card(
+    bubble_img,
+    "配体-受体关系气泡图示例",
+    "横轴为不同细胞群关系对，纵轴为配体-受体关系对；颜色和点大小用于表示通讯强度与显著性。"
+  ))
+}
+```
+
+### 信号通路层面可视化展示
+
+#### 信号通路中结果可视化展示
+
+```{r results='asis'}
+if (!is.null(example_sample)) {
+  pathway_dir <- file.path(example_sample_dir, "Pathways")
+  pathway_img <- first_existing(c(
+    find_png(pathway_dir, "\\.circle\\.png$"),
+    find_png(pathway_dir, "\\.heatmap\\.png$"),
+    find_png(pathway_dir, "\\.contribution\\.png$")
+  ))
+
+  cat("<p>信号通路层面的结果可用于查看某条 pathway 在不同细胞群之间的通讯模式。通路层面通常包含层次图、圈图、热图以及配受体对整体贡献等多种结果。下面仅展示 1 个通路结果示例。</p>")
+  cat(sprintf("<p><strong>输出结果见：</strong>%s</p>", render_path(pathway_dir)))
+  cat(render_image_card(
+    pathway_img,
+    "信号通路可视化示例",
+    "实际输出通常包含 circle、heatmap、contribution 等多种视图，本报告仅保留一个示例。"
+  ))
+}
+```
+
+#### 信号通路-细胞通讯相似性分析
+
+```{r results='asis'}
+if (!is.null(example_sample)) {
+  group_dir <- file.path(example_sample_dir, "SignalingGroups")
+  sim_img <- first_existing(c(
+    file.path(group_dir, "SignalingGroups_functional.png"),
+    file.path(group_dir, "SignalingGroups_structural.png"),
+    file.path(group_dir, "SignalingGroups_functional_split.png"),
+    file.path(group_dir, "SignalingGroups_structural_split.png")
+  ))
+
+  cat("<p>CellChat 能够量化所有重要信号通路之间的相似性，并根据它们的细胞通讯网络相似性对它们进行分组。分组可以基于功能或结构相似性进行。图中不同的点表示不同的信号通路，距离越近表示具有相似的通讯网络。</p>")
+  cat(sprintf("<p><strong>输出结果见：</strong>%s</p>", render_path(group_dir)))
+  cat(render_image_card(
+    sim_img,
+    "信号通路相似性分析示例",
+    "图中不同点代表不同通路，距离越近通常表示通信网络结构越相似。"
+  ))
+}
+```
+
+### 细胞通讯角色识别
+
+```{r results='asis'}
+if (!is.null(example_sample)) {
+  role_dir <- file.path(example_sample_dir, "SignalingRoles")
+  role_img <- first_existing(c(
+    file.path(role_dir, "SignalingRole_Scatter.png"),
+    file.path(role_dir, "SignalingRole_outgoing_heatmap.png"),
+    file.path(role_dir, "SignalingRole_incoming_heatmap.png"),
+    file.path(role_dir, "SignalingRole_all_heatmap.png")
+  ))
+
+  cat("<p>计算出细胞通讯的可能性后，我们同样关心特定细胞类群在细胞通讯网络中承担的角色。根据网络拓扑知识，可以从发送者、接收者和整体中心性等角度进行评估。以下仅展示 1 张角色识别结果图。</p>")
+  cat(sprintf("<p><strong>输出结果见：</strong>%s</p>", render_path(role_dir)))
+  cat(render_image_card(
+    role_img,
+    "细胞通讯角色识别示例",
+    "常见结果包括 scatter 以及 outgoing/incoming/overall 热图；本报告只展示其中一个代表性示例。"
+  ))
+}
+```
+
+## 不同数据集比较分析
+
+```{r results='asis'}
+if (is.null(example_compare)) cat(render_note("当前没有可用于展示的 compare 结果。"))
+```
+
+### 相互作用的总数和相互作用强度统计
+
+```{r results='asis'}
+if (!is.null(example_compare)) {
+  compare_bar <- first_existing(file.path(example_compare_dir, "compareInteractions.png"))
+
+  cat("<p>左图显示不同组别相互作用的总数，右图显示不同组别相互作用强度，其中处理组放在后面。本报告保留 1 张总览图作为示例。</p>")
+  cat(sprintf("<p><strong>输出结果见：</strong>%s</p>", render_path(compare_bar)))
+  cat(render_image_card(
+    compare_bar,
+    "组间相互作用总览示例",
+    "通常左侧为相互作用总数，右侧为相互作用强度。"
+  ))
+}
+```
+
+### 相互作用的总数和相互作用强度比较
+
+```{r results='asis'}
+if (!is.null(example_compare)) {
+  diff_img <- first_existing(c(
+    file.path(example_compare_dir, "diffInteraction_count.png"),
+    file.path(example_compare_dir, "diffInteraction_weight.png"),
+    file.path(example_compare_dir, "diffInteraction_count_heatmap.png")
+  ))
+
+  cat("<p>该模块展示两组间所有细胞亚群中的配受体对数目差异及通讯概率差异。报告中仅保留 1 张差异图示例。</p>")
+  cat(sprintf("<p><strong>输出结果见：</strong>%s</p>", render_path(example_compare_dir)))
+  cat(render_image_card(
+    diff_img,
+    "组间差异通讯示例",
+    "线条或颜色通常用于区分哪一组通讯更强，以及变化幅度大小。"
+  ))
+}
+```
+
+### 主要发送者（source）和接收者（target）比较
+
+```{r results='asis'}
+if (!is.null(example_compare)) {
+  scatter_img <- first_existing(file.path(example_compare_dir, "signalingRole_scatter.png"))
+
+  cat("<p>通过比较 outgoing 与 incoming 强度，可以轻松识别不同数据集之间发送或接收信号发生显著变化的细胞群。</p>")
+  cat(sprintf("<p><strong>输出结果见：</strong>%s</p>", render_path(scatter_img)))
+  cat(render_image_card(
+    scatter_img,
+    "发送者/接收者比较示例",
+    "横轴通常表示 outgoing，纵轴通常表示 incoming，不同点对应不同细胞群。"
+  ))
+}
+```
+
+### 比较与每个细胞群相关的 outgoing 或 incoming 信号模式
+
+```{r results='asis'}
+if (!is.null(example_compare)) {
+  heatmap_img <- first_existing(c(
+    file.path(example_compare_dir, "signalingRole_heatmap_outgoing.png"),
+    file.path(example_compare_dir, "signalingRole_heatmap_incoming.png"),
+    file.path(example_compare_dir, "signalingRole_heatmap_all.png")
+  ))
+
+  cat("<p>该模块用于对比两组中细胞群对应的信号模式变化。本报告仅展示 1 张热图示例。</p>")
+  cat(sprintf("<p><strong>输出结果见：</strong>%s</p>", render_path(heatmap_img)))
+  cat(render_image_card(
+    heatmap_img,
+    "信号模式比较示例",
+    "热图常用于展示不同细胞群在多条信号通路上的相对强度差异。"
+  ))
+}
+```
+
+### 识别上调和下调的信号配体-受体对
+
+```{r results='asis'}
+if (!is.null(example_compare)) {
+  diff_bubble_dir <- file.path(example_compare_dir, "Diff_BubblePlots")
+  diff_bubble_img <- first_existing(find_png(diff_bubble_dir))
+
+  cat("<p>该部分展示相对于对照组而言，上调或下调的配体-受体信号对。本报告仅展示 1 个气泡图示例。</p>")
+  cat(sprintf("<p><strong>输出结果见：</strong>%s</p>", render_path(diff_bubble_dir)))
+  cat(render_image_card(
+    diff_bubble_img,
+    "上下调配受体示例",
+    "颜色和点大小通常用于表示差异通讯强度及统计显著性。"
+  ))
+}
+```
+
+### 利用差异表达分析识别功能失调的信号
+
+```{r results='asis'}
+if (!is.null(example_compare)) {
+  deg_dir <- file.path(example_compare_dir, "DEG_Network")
+  deg_file <- find_any_file(c(
+    file.path(deg_dir, "netMappingDEG_UP.csv"),
+    file.path(deg_dir, "netMappingDEG_DOWN.csv"),
+    file.path(deg_dir, "netMappingDEG_UP.txt"),
+    file.path(deg_dir, "netMappingDEG_DOWN.txt")
+  ))
+  deg_preview <- read_preview_table(deg_file, n = 5)
+  deg_status <- file.path(deg_dir, "deg_status.txt")
+
+  cat("<p>差异表达分析可用于辅助识别功能失调的信号轴。以下展示 1 个 DEG 结果表预览；如无结果，通常说明当前阈值下未筛到显著差异。</p>")
+  cat(sprintf("<p><strong>输出结果见：</strong>%s</p>", render_path(deg_dir)))
+
+  if (file.exists(deg_status)) {
+    status_text <- paste(readLines(deg_status, warn = FALSE), collapse = "<br/>")
+    cat(render_note(sprintf("<strong>DEG 模块状态：</strong><br/>%s", status_text)))
+  }
+
+  if (nrow(deg_preview) > 0) {
+    cat(render_table(deg_preview))
+  } else {
+    cat(render_note("当前未检测到可展示的 DEG 结果表。"))
+  }
+}
+```
+
+### 在通路层面的比较
+
+```{r results='asis'}
+if (!is.null(example_compare)) {
+  shared_dir <- file.path(example_compare_dir, "Shared_Pathways")
+  shared_img <- first_existing(find_png(shared_dir))
+
+  cat("<p>该模块用于比较两组共享 pathway 的网络结构差异。报告中仅展示 1 个共享通路的代表性图像。</p>")
+  cat(sprintf("<p><strong>输出结果见：</strong>%s</p>", render_path(shared_dir)))
+  cat(render_image_card(
+    shared_img,
+    "共享通路比较示例",
+    "若同一路径同时生成 circle 与 heatmap，本报告默认只展示首个可用示例。"
+  ))
+}
+```
+
+```{r results='asis'}
+if (nrow(failed_tasks_view) > 0) {
+  cat("### 异常任务说明\n\n")
+  cat(render_note("以下任务在批处理过程中未完全成功，但其余步骤仍继续执行。可根据日志路径进一步排查。"))
+  print(render_table(data.frame(
+    模块 = failed_tasks_view$task_type,
+    名称 = failed_tasks_view$name,
+    日志 = vapply(failed_tasks_view$log_file, trim_output_path, character(1)),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )))
+}
+```
+
+# 应用场景
+
+- 比较不同样本或处理条件下的细胞通讯重塑情况。
+- 识别关键细胞群在通讯网络中的发送者、接收者或中心调控角色。
+- 从信号通路与配体-受体层面筛选潜在调控轴，为后续机制验证提供候选方向。
+- 结合差异表达、分组设计与下游实验结果，对重点通路进行更有针对性的解释。
+
+# 细胞通讯分析文件一览
+
+```{r results='asis'}
+cat(render_note(sprintf(
+  "以下目录树从输出目录开始展示：%s",
+  render_path(input_dir)
+)))
+```
+
+## 单样本结果示例
+
+```{r results='asis'}
+if (is.null(example_sample)) {
+  cat(render_note("未检测到单样本结果目录，无法生成单样本文件示例。"))
+} else {
+  single_tree <- build_focus_tree(
+    branch_name = "single",
+    example_name = example_sample_name,
+    example_dir = example_sample_dir,
+    child_depth = 2,
+    child_entries = 8
+  )
+
+  cat("<div class='file-overview'>")
+  cat("<div class='file-overview-left'>")
+  cat(sprintf("<pre>%s</pre>", single_tree))
+  cat("</div>")
+  cat("<div class='file-overview-right'>")
+  cat(render_focus_explanations(
+    branch_name = "single",
+    example_name = example_sample_name,
+    example_dir = example_sample_dir,
+    context = "single"
+  ))
+  cat("</div>")
+  cat("</div>")
+}
+```
+
+## 比较结果示例
+
+```{r results='asis'}
+if (is.null(example_compare)) {
+  cat(render_note("未检测到比较结果目录，无法生成 compare 文件示例。"))
+} else {
+  compare_tree <- build_focus_tree(
+    branch_name = "compare",
+    example_name = example_compare_name,
+    example_dir = example_compare_dir,
+    child_depth = 2,
+    child_entries = 10
+  )
+
+  cat("<div class='file-overview'>")
+  cat("<div class='file-overview-left'>")
+  cat(sprintf("<pre>%s</pre>", compare_tree))
+  cat("</div>")
+  cat("<div class='file-overview-right'>")
+  cat(render_focus_explanations(
+    branch_name = "compare",
+    example_name = example_compare_name,
+    example_dir = example_compare_dir,
+    context = "compare"
+  ))
+  cat("</div>")
+  cat("</div>")
+}
+```
+
+# 联系我们
+
+如需进一步扩展分析内容，可在现有结果基础上继续结合原始表达矩阵、细胞注释、差异表达结果和感兴趣的信号通路开展深度挖掘。
+
+广科安德

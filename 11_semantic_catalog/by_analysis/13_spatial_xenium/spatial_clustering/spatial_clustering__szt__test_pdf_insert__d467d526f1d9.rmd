@@ -1,0 +1,269 @@
+---
+title: "Untitled"
+author: "szt"
+date: "2024-08-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+
+```{r, fig.align="center", cho=FALSE, out.width="95%", out.height="240"}
+knitr::include_graphics("1. QC/qc plot.pdf")
+library(tidyverse)
+```
+
+
+```{r, include=FALSE}
+sample_info <- read.csv("data/Annoation.csv")
+sample_ls <- sample_info$group
+```
+
+## tbashow {.tabshow}   
+
+```{r , echo=FALSE, results='asis'}
+
+sample_ls %>%
+  walk(function(x){
+    path <- file.path("materials_for_rmd", str_glue("1 qc plot - {x}.png"))
+    
+    stopifnot(file.exists(path))
+    
+    cat(str_glue("### {x}  \n\n"))
+    # knitr::include_graphics(path)
+    cat(str_glue("<img src='{path}' width='90%'  align = center />"))
+    cat("  \n\n")
+  })
+    
+
+
+
+
+```
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+## test tableshow  {.tabshow}  
+
+```{r, results='asis', fig.height=6, fig.width=8}
+
+
+walk(1:5, function(x){
+  cat(str_glue("### cluster{x}   \n\n"))
+  p <- iris %>%
+    ggplot(aes(x = Sepal.Length, y = Sepal.Width)) +
+    geom_point()
+  print(p)
+  cat("\n\n")
+})
+
+```
+
+
+
+
+
+## end  
+
+<!-- css for tabshow and tabset-diy -->
+```{css, echo=FALSE}
+
+embed {
+    height: 480;
+}
+
+/*tab show*/
+select{
+    padding: 5px;
+    padding-right: 20px;
+    margin-bottom: 20px;
+    margin-right: 5%;
+/*    float: left; */
+}
+select:hover{
+    box-shadow: 0px 0px 2px 2px #AAB2D1;
+    cursor: pointer;
+}
+p::before{ /*清除浮动的影响*/
+    content: "";
+    display: block;
+    clear: both;
+}
+
+.tabclear::after{
+    content: '';
+    display: block;
+    clear: both;
+}
+
+/*tabset diy*/
+.tab-ul{
+    margin: 0px;
+    padding: 0px;
+    padding-top:10px;
+}
+
+.tab-ul::before, .tab-ul::after{
+    content: '';
+    clear: both;
+    display: block;
+}
+
+.tab-li{
+    padding: 4px 20px;
+    margin-right: 3px;
+    list-style: none;
+    background: #eee;
+    cursor: pointer;
+    float: left;
+    transition: background 0.5s;
+}
+.tab-li.active{
+    border-top: 3px solid #8d95aa;
+    border-left: 1px solid #8d95aa;
+    border-right: 1px solid #8d95aa;
+    background: white;
+    padding: 6px 20px;
+    margin-bottom: -1px;
+}
+
+.tab-li:hover{
+    background: #bbc1da;
+}
+
+.tabset-diy .section{
+    border: 1px solid #8d95aa;
+}
+```
+
+
+<!-- 折叠布局，tabshow控制 兼容ie-->
+
+```{js, echo = FALSE}
+$(function(){
+
+  // 所有需要折叠子元素的div，class有tabshow
+  var tabs = $('.tabshow');
+  
+  for(var i =0; i < tabs.length; i++){
+    var tablist,  // 需要折叠的子元素div
+        id_list,  // 折叠div的id
+        text_list; // 折叠div的text，用于select的option中显示
+    
+    tablist = tabs.eq(i).children('.section');
+    if(tablist.length < 2) {continue;}
+    
+    id_list = tablist.map(function(){ return '#' + $(this).attr('id') }).get().map(x => x.replace('.', "\\.") );
+    text_list = tablist.map(function(){ return $(this).children(':not("div")').eq(0).hide().text() });
+    text_list = text_list.map(function(){ return this.replace(/^[0-9]+(\.[0-9]+)*\s{1}/g, '') }).get();
+    
+    // 构造select元素
+    var select = $('<select>').attr('id', 'tab-select' + i);
+    for(var j=0; j < id_list.length; j++){
+      var op = $('<option>').attr('value', id_list[j]).text(text_list[j]);
+      if(j === 0){
+        op = op.attr('selected', 'selected');
+      }
+      select.append(op);
+    }
+    
+    // select使用一个div包裹
+    select = $('<div>').append(select);
+    // 如果有clear类属性，则将select的父div加上clear属性
+    var className = tablist.eq(0).attr('class');
+    if(/clear/.test(className)){
+      select.addClass('tabclear')
+    }
+    // 将select嵌入DOM中
+    tablist.eq(0).before(select);
+    
+    // 初始化，默认显示第一个子元素div，其他隐藏
+    $(id_list[0]).show().siblings('.section').hide();
+    
+    // 绑定select的change事件，动态改变div的显隐
+    $('#'+'tab-select' + i).change(function(){
+      var val = $(this).val();
+      $(val).show().siblings('.section').hide();
+    })
+  }
+
+})
+
+
+```
+
+<!-- 自定义tabset（默认tabset无法作用于h6之后的标题） 兼容ie-->
+
+```{js, echo = FALSE}
+$(function(){
+
+  // 所有需要折叠子元素的div，class有tabset-diy
+  var tabs = $('.tabset-diy');
+  
+  for(var i = 0; i < tabs.length; i++){
+    var tablist,  // 需要折叠的子元素div
+        id_list,  // 折叠div的id
+        text_list; // 折叠div的text，用于select的option中显示
+    
+    tablist = tabs.eq(i).children('.section');
+    if(tablist.length < 2) {continue;}
+    
+    id_list = tablist.map(function() { return '#' + $(this).attr('id') }).get();.map(x => x.replace('.', "\\.") )
+    text_list = tablist.map(function(){ return $(this).children().eq(0).hide().text(); });
+    text_list = text_list.map(function(){ return this.replace(/^[0-9]+(\.[0-9]+)*\s{1}/g, '') }).get();
+    
+    // 构造ul元素
+    var ul = $('<ul>').attr('id', 'tab-ul' + i).addClass('tab-ul');
+    for(var j=0; j < id_list.length; j++){
+      var li = $('<li>').addClass('tab-li')
+                        .attr('data-item', id_list[j])
+                        .text(text_list[j]);
+      if(j === 0){
+        li = li.addClass('active');
+      }
+      ul.append(li);
+    }
+    
+    // 将select嵌入DOM中
+    tablist.eq(0).before(ul);
+    
+    // 初始化，默认显示第一个子元素div，其他隐藏
+    $(id_list[0]).show().siblings('.section').hide();
+    
+    // 绑定ul的li的click事件，动态改变div的显隐
+    $('#'+'tab-ul' + i + ' > li').click(function(){
+      // li的active class改变
+      $(this).addClass('active').siblings().removeClass('active')
+      // li对应的div的显隐
+      var item = $(this).attr('data-item');
+      $(item).show().siblings('.section').hide();
+    })
+  }
+
+})
+
+
+```

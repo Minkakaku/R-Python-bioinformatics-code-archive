@@ -1,0 +1,1 @@
+Rscript /mnt/NexData_file/home/wmx/Project/AE2511046228-02/shouhou12/pip_cellchat.R --rds "/mnt/NexData_file/home/wmx/Project/AE2511046228-02/shouhou12/Main_mapping_count.rds" --outpath /mnt/NexData_file/home/wmx/Project/AE2511046228-02/shouhou12/cellchat/ --splitby group --species human --comparison "LARC:N"

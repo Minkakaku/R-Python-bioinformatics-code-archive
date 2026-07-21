@@ -20,6 +20,9 @@
 !Makefile
 !requirements*.txt
 
+# Generated semantic indexes.
+!11_semantic_catalog/**/*.tsv
+
 # Provenance and integrity records generated during code collection.
 !CHECKSUMS.sha256
 !manifest.tsv

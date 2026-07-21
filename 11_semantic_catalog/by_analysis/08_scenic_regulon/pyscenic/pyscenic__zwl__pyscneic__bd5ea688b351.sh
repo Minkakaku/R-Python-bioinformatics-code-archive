@@ -1,0 +1,2 @@
+conda activate /mnt/NexData_file/share/scRNA-tools/envs/pip_SCENICR/
+python /mnt/NexData_file/home/zwl/Project/personal/demo/SCENIC/new_code/scenic.py   --adata_path /mnt/NexData_file/home/zwl/Project/SC2505152218-01/01.Mission/Tumor-like\ cells/Tumor.h5ad   --output_dir /mnt/NexData_file/home/zwl/Project/SC2505152218-01/07.Mission/pyscenic   --species mouse

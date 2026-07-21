@@ -1,0 +1,5 @@
+#conda activate /mnt/NexData_file/share/scRNA-tools/envs/pip_SCENICR/
+python /mnt/NexData_file/share/scRNA_platform/scVision5/moudle/tools/SENIC/new_code/scenic.py   --adata_path /mnt/NexData_file/home/yrc/SC2507223877/ICCVOs3.h5ad   --output_dir /mnt/NexData_file/home/yrc/SC2507223877/ICCVOs3   --species human
+python /mnt/NexData_file/share/scRNA_platform/scVision5/moudle/tools/SENIC/new_code/scenic.py   --adata_path /mnt/NexData_file/home/yrc/SC2507223877/ICCVOs6.h5ad   --output_dir /mnt/NexData_file/home/yrc/SC2507223877/ICCVOs6   --species human
+python /mnt/NexData_file/share/scRNA_platform/scVision5/moudle/tools/SENIC/new_code/scenic.py   --adata_path /mnt/NexData_file/home/yrc/SC2507223877/ICCVOs9.h5ad   --output_dir /mnt/NexData_file/home/yrc/SC2507223877/ICCVOs9   --species human
+python /mnt/NexData_file/share/scRNA_platform/scVision5/moudle/tools/SENIC/new_code/scenic.py   --adata_path /mnt/NexData_file/home/yrc/SC2507223877/ICCVOs14.h5ad   --output_dir /mnt/NexData_file/home/yrc/SC2507223877/ICCVOs14   --species human
