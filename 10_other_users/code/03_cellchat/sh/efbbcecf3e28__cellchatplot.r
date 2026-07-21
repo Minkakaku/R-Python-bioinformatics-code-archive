@@ -1,0 +1,171 @@
+library(cowplot)
+library(Seurat)
+library(RColorBrewer)
+library(CellChat)
+library(ggplot2)
+library(ggalluvial)
+library(svglite)
+library(patchwork)
+library(ComplexHeatmap)
+library(argparser)
+library(pdftools)
+library(stringr)
+library(jpeg)
+library(rmarkdown)
+
+load("/mnt/NexData_file/home/sh/Projects/FWSC20241287/07.Mission/newcellchat/MODEL_CONTROL/tmp_object.RData")
+object.list1<-object.list
+load("/mnt/NexData_file/home/sh/Projects/FWSC20241287/07.Mission/newcellchat/PF11-H_MODEL/tmp_object.RData")
+cellchat <- mergeCellChat(object.list,add.names = names(object.list))
+outdir<-"/mnt/NexData_file/home/sh/Projects/FWSC20241287/09.Mission/cellchat_plot/"
+
+vertex_cal = function (object, signaling, slot.name = "netP"){
+		centr0 <- slot(object, slot.name)$centr[signaling]
+		centr0 <- centr0[[1]]
+    mat <- matrix(unlist(centr0), ncol = length(centr0), byrow = FALSE)
+    mat <- t(mat)
+    rownames(mat) <- names(centr0); colnames(mat) <- names(centr0$outdeg)
+    mat <- mat[c("outdeg","indeg"),]
+		mat <- as.data.frame(t(mat))
+		top3_indices <- head(order(mat$outdeg, decreasing = TRUE), 3)
+}
+
+# pathway_outdir<-outdir
+# select_pathway<-c('LAMININ')
+# for(k in str_c(select_pathway)){
+# 	pairLR_top <- extractEnrichedLR(object.list[[1]], signaling = k, geneLR.return = FALSE)
+# 	pairLR_top <- pairLR_top[26,]
+# 	vertex_receiver <- vertex_cal(object.list[[1]],k)
+# 	pdf(paste0(pathway_outdir,k,"-",names(object.list)[1],"-centrality_heatmap.pdf"),width = 8,height= 3)
+# 	gg <- netAnalysis_signalingRole_network(object.list[[1]], signaling = k, width = 14, height = 2.5, font.size = 10)
+# 	dev.off()
+
+# 	pdf(paste0(pathway_outdir,k,"-",names(object.list)[1],"-contribution_barplot.pdf"),width = 8,height= 10)
+# 	print(netAnalysis_contribution(object.list[[1]], signaling = k))
+# 	dev.off()
+
+# 	vertex_receiver<-c(5,10,15)
+# 	pdf(paste0(pathway_outdir,k,"-",names(object.list)[1],"-",pairLR_top,"-top_hierarchy.pdf"),width = 15,height= 8)
+# 	netVisual_individual(object.list[[1]], signaling = k, pairLR.use = pairLR_top, vertex.receiver = vertex_receiver, layout = "hierarchy")
+# 	dev.off()
+# }
+
+# for(k in str_c(select_pathway)){
+# 	pairLR_top <- extractEnrichedLR(object.list[[2]], signaling = k, geneLR.return = FALSE)
+# 	pairLR_top <- pairLR_top[26,]
+# 	vertex_receiver <- vertex_cal(object.list[[2]],k)
+# 	pdf(paste0(pathway_outdir,k,"-",names(object.list)[2],"-centrality_heatmap.pdf"),width = 8,height= 3)
+# 	gg <- netAnalysis_signalingRole_network(object.list[[2]], signaling = k, width = 14, height = 2.5, font.size = 10)
+# 	dev.off()
+
+# 	pdf(paste0(pathway_outdir,k,"-",names(object.list)[2],"-contribution_barplot.pdf"),width = 8,height= 10)
+# 	print(netAnalysis_contribution(object.list[[2]], signaling = k))
+# 	dev.off()
+
+# 	vertex_receiver<-c(5,10,15)
+# 	pdf(paste0(pathway_outdir,k,"-",names(object.list)[2],"-",pairLR_top,"-top_hierarchy.pdf"),width = 15,height= 8)
+# 	netVisual_individual(object.list[[2]], signaling = k, pairLR.use = pairLR_top, vertex.receiver = vertex_receiver, layout = "hierarchy")
+# 	dev.off()
+# }
+
+# pdf_files <- list.files(path = outdir, pattern = "*.pdf", full.names = TRUE)
+# for (i in seq_along(pdf_files)) {
+#     file_name <- pdf_files[i]
+#     pdf_image <- pdf_render_page(file_name, dpi = 300)
+#     writeJPEG(pdf_image, str_replace(string = file_name,pattern = "pdf",replacement = "png"))
+# }
+
+cellchat <- mergeCellChat(list(object.list1$CONTROL,object.list1$MODEL,object.list[['PF11-H']]),add.names = c('CONTROL','MODEL','PF11-H'))
+#### 画气泡图
+data <- netVisual_bubble(
+    cellchat,
+    # sources.use = 'Remodeling Mac-Svep1',
+    # targets.use = "Mesangial cells",
+    comparison = c(1, 2, 3),  # 比较三组
+    title.name = "CellChat Comparison",
+    font.size = 8,
+    angle.x = 45,
+    return.data = TRUE
+)
+df<-data$communication[which(data$communication$source == 'Remodeling Mac-Svep1'),]
+df_raw<-df[which(df$target == 'Mesangial cells'),]
+source("/mnt/NexData_file/home/sh/Projects/FWSC20250829/09.Mission/script/cellchat_netVisual_bubble.r")
+"ADGRE","AGRN","ANGPTL","APP"
+"CADM","CDH5","COLLAGEN","ADGRG"
+"CXCL","EPHB","ESAM","JAM"
+"FN1","GAS","GRN","HSPG"
+"KLK","LAMININ","GALECTIN","NECTIN"
+"PCDH","PECAM1","PECAM2","PROS"
+"CD45","PTPRM","PTPR","SEMA3"
+"SEMA4","SPP1","TGFb","THBS"
+df<-df_raw[df_raw$pathway_name %in% c("SEMA4","SPP1","TGFb","THBS"),]
+
+g <- ggplot(df, aes(x = source.target, y = interaction_name_2,
+        color = prob, size = pval)) + geom_point(pch = 16) +
+        theme_linedraw() + theme(panel.grid.major = element_blank()) +
+        theme(axis.text.x = element_text(angle = 60, hjust = 1,
+            vjust = 1), axis.title.x = element_blank(),
+            axis.title.y = element_blank()) + scale_x_discrete(position = "bottom")
+values <- c(1, 2, 3)
+names(values) <- c("p > 0.05", "0.01 < p < 0.05", "p < 0.01")
+dot.size.max = max(df$pval)
+dot.size.min = min(df$pval)
+
+g <- g + scale_radius(range = c(dot.size.min*3, dot.size.max*3),
+    breaks = sort(unique(df$pval)), labels = names(values)[values %in%
+        sort(unique(df$pval))], name = "p-value")
+
+color.use <- RColorBrewer::brewer.pal(n = 10, name = "Spectral")
+color.use <- rev(color.use)
+
+g <- g + scale_colour_gradientn(colors = colorRampPalette(color.use)(99),
+    na.value = "white", limits = c(quantile(df$prob,
+        0, na.rm = T), quantile(df$prob, 1, na.rm = T)),
+    breaks = c(quantile(df$prob, 0, na.rm = T), quantile(df$prob,
+        1, na.rm = T)), labels = c("min", "max")) + guides(color = guide_colourbar(barwidth = 0.5,
+     title = "Commun. Prob."))
+
+g <- g + theme(text = element_text(size = 10), plot.title = element_text(size = 10)) +
+    theme(legend.title = element_text(size = 10), legend.text = element_text(size = 8))
+
+if (length(unique(df$source.target)) > 1) {
+    g <- g + geom_vline(xintercept = seq(1.5, length(unique(df$source.target)) -
+        0.5, 1), lwd = 0.1, colour = "grey90")
+}
+    if (length(unique(df$interaction_name_2)) > 1) {
+        g <- g + geom_hline(yintercept = seq(1.5, length(unique(df$interaction_name_2)) -
+            0.5, 1), lwd = 0.1, colour = "grey90")
+    }
+
+comparison = c(1,2,3)
+dataset.name <- names(cellchat@net)
+group.names0 <- df$source.target
+
+xintercept = seq(0.5 + length(dataset.name[comparison]),
+    length(group.names0) * length(dataset.name[comparison]),
+    by = length(dataset.name[comparison]))
+g <- g + geom_vline(xintercept = xintercept, linetype = "dashed",
+    color = "grey60", size = 0.2)
+
+group <- 1:length(comparison)
+names(group) <- dataset.name[comparison]
+color <- c('#2F6BFF','#E74C3C','green')
+
+names(color) <- names(group[!duplicated(group)])
+color <- color[group]
+dataset.name.order <- levels(df$source.target)
+dataset.name.order <- stringr::str_match(dataset.name.order,
+    "\\(.*\\)")
+dataset.name.order <- stringr::str_sub(dataset.name.order,
+    2, stringr::str_length(dataset.name.order) -
+      1)
+xtick.color <- color[dataset.name.order]
+g <- g + theme(axis.text.x = element_text(colour = xtick.color))
+
+# 保存
+pdf(paste0(outdir, "P8_bubble_plot_comparison.pdf"), width = 5, height = 10)
+print(g)
+dev.off()
+png(paste0(outdir, "P8_bubble_plot_comparison.png"), width = 500, height = 1000)
+print(g)
+dev.off()

@@ -1,0 +1,90 @@
+### 4.8 功能预测
+
+#### 4.8.1 ITS FUNGuild表型预测
+
+##### {- .toc-ignore .tabset .tabset-dropdown}
+
+&emsp;&emsp;FUNGuild（Fungi Functional Guild）<sup>[23]</sup>是一种可用于由生态协会分类学解析真菌的工具，用简单而一致的方法将大型序列库分类为具有生态意义的类别。“Guild<sup>[24]</sup>”即“功能分组”（Functional group），其概念早在1902年被提出，指某些物种，无论其系统进化上是否相关，但它们在对环境资源的吸收利用上采取相似的方式而被划分为同一类。按照营养方式（Trophic Mode）将真菌分为三大类:
+
+- **病理营养型（Pathotroph）**：通过损害宿主细胞而获取营养；
+- **共生营养型（Symbiotroph）**：通过与宿主细胞交换资源来获取营养；
+- **腐生营养型（Saprotroph）**：通过降解死亡的宿主细胞来获取营养。
+
+&emsp;&emsp;使用FUNGuild数据库自带的分析脚本进行注释，筛选可信度为“Highly Probable"和"Probable"的注释结果。各比较组中，根据营养方式进行分类的相对丰度如下图所示：
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.dirs(params$funguild_dir, recursive = FALSE, full.names = FALSE)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+for (contrast in sort_contrast_list) {
+  pic <- file.path(params$funguild_dir, contrast, glue("{contrast}.FUNGuild.trophic_mode.png"))
+  cat("###### ", contrast, " \n")
+  cat("\n")
+  cat("![](", pic, "){width=60%}", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**图4.8.1-1 FUNGuild按照营养方式分类的相对丰度柱状图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** 横坐标为样本，纵坐标为营养方式分类。</center>", "\n")
+  cat("<center>&nbsp;<center>", "\n")
+  cat("\n")
+}
+
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;进一步可以将真菌细分为以下Guild分类：
+
+- **病理营养型（Pathotroph）**：
+  - Animal Pathogen：动物病原菌；
+  - Bryophyte Parasite：苔藓植物寄生菌；
+  - Clavicipitaceous Endophyte：内生真菌；
+  - Fungal Parasite：真菌寄生菌；
+  - Lichen Parasite：地衣寄生菌；
+  - Plant Pathogen：植物病原菌。
+- **腐生营养型（Saprotroph）**:
+  - Dung Saprotroph：排泄物腐生菌；
+  - Leaf Saprotroph：叶子腐生菌；
+  - Plant Saprotroph：植物腐生菌；
+  - Soil Saprotroph：土壤腐生菌；
+  - Undefined Saprotroph：未定义腐生菌；
+  - Wood Saprotroph：木质腐生菌
+- **共生营养型（Symbiotroph）**
+  - Ectomycorrhizal：外生菌根；
+  - Ericoid Mycorrhizal：杜鹃花类菌根；
+  - Endophyte：内生菌根；
+  - Epiphyte：体表寄生菌；
+  - Lichenized： 地衣共生菌
+
+&emsp;&emsp;根据Guild分类结果，用柱状图的形式展示排名前10的分类结果，其余分类结果合并为“Others”：
+
+##### {- .toc-ignore .tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.dirs(params$funguild_dir, recursive = FALSE, full.names = FALSE)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+for (contrast in sort_contrast_list) {
+  pic <- file.path(params$funguild_dir, contrast, glue("{contrast}.FUNGuild.guild.png"))
+  cat("###### ", contrast, " \n")
+  cat("\n")
+  cat("![](", pic, "){width=60%}", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**图4.8.1-1 FUNGuild按照Guild分类的相对丰度柱状图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** 横坐标为样本，纵坐标为Guild分类。</center>", "\n")
+  cat("<center>&nbsp;<center>", "\n")
+  cat("\n")
+}
+
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- FUNGuild的注释结果文件：results/08.function_analysis/FUNGuild/all.FUNGuild.results.xls；
+- 各比较组营养方式分类相对丰度表格和柱状图：results/08.function_analysis/FUNGuild/*/*.FUNGuild.trophic_mode.{xls,pdf,png}；
+- 各比较组Guild分类分类相对丰度表格和柱状图：results/08.function_analysis/FUNGuild/*/*.FUNGuild.guild.{xls,pdf,png}。

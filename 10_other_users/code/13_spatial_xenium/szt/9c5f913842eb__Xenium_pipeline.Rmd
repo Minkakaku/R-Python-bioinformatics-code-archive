@@ -1,0 +1,2721 @@
+---
+title: "非因生物MIPCC-Xenium 单细胞空间原位转录组学分析报告"
+author: 
+  - "Mills Institute for Personalized Cancer Care (MIPCC)"
+date: "`r Sys.Date()`"
+params:
+  tb_output: "html"
+  tb_output_: "html, latex"
+  organism: hsa # hsa mmu
+  assay: "RNA"
+  norm_method: LogNormalize # LogNormalize SCT
+  read_all_marker: TRUE # findmarker那里是否读取all_marker.rds，而不是重新运行
+  proj_name: NULL # 用于确定使用多少样本
+  doIntegrate: TRUE
+  integrateMethod: rpca # cca rlsi
+  ndims: NULL
+  gc: TRUE
+output:
+  html_document:
+    number_sections: yes
+    theme: paper
+    toc: yes
+    toc_float: yes
+    toc_depth: 3
+  pdf_document:
+    latex_engine: xelatex
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+<!-- ```{js, echo = FALSE} -->
+
+<!-- $('head').append('<link rel="stylesheet" type="text/css" href="style.css"></link>') -->
+
+<!-- ``` -->
+
+```{r,include=FALSE}
+# omit some sc data in data directory
+# reference id in integration
+# dims: 30
+# finde markers, log2fc min_p slice_max
+# singleR_dat: celldex
+
+```
+
+<link rel="stylesheet" type="text/css" href="style.css"></link>
+
+```{r setup, include=FALSE}
+options(java.parameters = '-Xmx10g') # options('java.parameters')
+library(rJava)
+library(RBioFormats)
+
+knitr::opts_chunk$set(
+	echo = FALSE,
+	fig.align = "center",
+	message = FALSE,
+	warning = FALSE,
+	autodep = TRUE
+)
+pacman::p_load(kableExtra, tidyverse, magrittr, glue, grid, Seurat, patchwork, cowplot, metap, COSG)
+source("../fix_bugs.R")
+source("../xenium.R")
+
+# 参数校验
+if(params$norm_method != "LogNormalize"){
+  stop("LogNormalize method is the only method to normalize Xenium data.")
+}
+
+```
+
+
+```{r Parallelization, include=FALSE}
+
+library(future)
+plan("multisession", workers = 4, gc = TRUE)
+
+options(future.globals.maxSize = 10 * 1024 ^ 3)
+
+nbrOfFreeWorkers()
+
+# # multisession can be stoped by:
+# plan("sequential")
+# future:::ClusterRegistry("stop")
+```
+
+
+::: original-logo
+```{r logo,out.width='80%'}
+knitr::include_graphics("figure/logo.png")
+```
+:::
+
+# 项目基本信息  
+
+
+```{r project_infomation}
+chart_project <- readxl::read_excel("test_info_xenium.xlsx", sheet = "项目信息") %>%
+  map_dfc(str_replace_na, replacement = "")
+kable(chart_project, format = params$tb_output) %>% 
+kable_styling("striped", full_width = T)
+
+#项目编号同合同编号
+#DSP Assay ID为MIPCC-DSP-P/R-日期-实验轮次
+#样本组编号为MIPCC-DSP-20200729A/B/……
+#样本ID为样本组编号-01/02/……
+```
+
+如果您对样品或数据有任何疑问，请将**上述信息及问题的简单描述**发送到技术支持邮箱。\
+项目技术支持联系方式：\
+邮箱： [supports\@fynnbio.com](mailto:supports@fynnbio.com){.email}\
+电话： 400-800-3119\
+注：本报告(如为html文件)所有图片在浏览器中（推荐Chrome浏览器）均可以通过右击"在新标签页打开图片(I)"查看大图。
+
+# 实验流程
+
+## 实验流程概述
+
+在Xenium载玻片上制备新鲜冷冻（FF）和福尔马林固定石蜡包埋（FFPE）组织切片。对样本进行前期处理以暴露出易于杂交的RNA，将可环化的DNA探针与样本过夜杂交。在PCR仪内完成探针连接，产生可酶促扩增的环状DNA探针。最终将玻片置于Xenium分析仪内进行连续数轮的荧光探针的杂交、成像和去除，实现目标基因的定位和识别，完成数据获取。   
+
+```{r flow_chart,out.width='80%'}
+knitr::include_graphics("figure/流程示意图.jpg")
+```
+
+## 实验流程详解
+
+### 主要设备   
+
+```{r project_machine}
+chart_project <- readxl::read_excel("test_info_xenium.xlsx", sheet = "仪器") %>%
+  map_dfc(str_replace_na, replacement = "")
+kable(chart_project, format = params$tb_output) %>% 
+kable_styling("striped", full_width = T)  
+
+
+#仪器为制造商……
+#Xenium Instrument为10x Genomics……
+#PCR仪为Biorad……
+```
+
+### 样本制备
+
+
+(1)对新鲜冷冻（FF）和福尔马林固定石蜡包埋（FFPE）样本进行HE染色，根据染色结果中的样本形态结构进行样本质量判断，并进行目的位置的选取。   
+
+(2)在Xenium载玻片上制备FF或FFPE组织切片，将切片贴附在Xenium玻片的有效区域，有效区域大小为12.45mm*22.45mm，如下图所示。       
+
+注意：制备好的切片需在4周内开启实验。  
+
+```{r slides_chart,out.width='30%'}
+knitr::include_graphics("figure/样本有效区域.jpg")
+```
+
+### 样本前期处理
+
+(3)根据样本类型的不同进行样本前期处理，新鲜冷冻（FF）样本采用组织固定及透化处理，福尔马林固定石蜡包埋（FFPE）样本采用脱蜡水化及解交联处理。这一步可以暴露出易于同探针杂交的RNA分子。
+
+
+### 探针孵育&连接&扩增  
+
+(4)配制可环化探针（靶点基因特异性），将探针与组织放在PCR仪内过夜孵育（16-24h)。   
+
+(5)第二天，通过清洗去除多余的探针。然后在PCR仪内完成探针连接，产生可酶促扩增的环状DNA探针，再进行原位的滚环扩增，生成可供荧光标记探针杂交的基因特异性空间标签序列。   
+
+(6)去除样本自荧光，用DAPI染液对组织的细胞核进行染色。
+
+```{r probe_chart,out.width='60%'}
+knitr::include_graphics("figure/探针杂交连接扩增.jpg")
+```
+
+### 荧光探针杂交&成像&去除  
+
+(7)将玻片置于Xenium分析仪内完成样本扫描，选择后续需要分析的Region。 
+
+(8)Xenium分析仪进行多轮的荧光探针的杂交、成像和去除，大约需要2-5天。连续多轮的荧光探针杂交、成像和移除会形成独特的荧光信号组合特征条形码，每一轮杂交反应中，荧光标记探针和基因特异性空间标签序列杂交，通过高分辨率显微镜扫描图像，检测每个荧光探针的位置，然后将荧光探针移除，实现目标基因的定位和识别，最终完成数据获取。  
+
+```{r decoding_chart,out.width='60%'}
+knitr::include_graphics("figure/荧光探针杂交成像解码.jpg")
+```
+
+
+
+
+# 数据结果
+
+## 分析流程图
+
+  建议数据分析基本流程如下图所示：
+
+```{r bioinfo_analysis,out.width='60%'}
+knitr::include_graphics("figure/数据分析流程图.jpg")
+
+```
+
+## 数据质检（QC）结果
+
+```{r load_data, include=FALSE,results='hide'}
+# define data path
+data_dir <- "../data"
+anno_file <- "../data/Annotation.csv"
+ROI_anno_file <- "../data/ROI_Annotation.xlsx"
+panel_file <- "SAM000626 xenium-human-gene-expression-panel-gene-list.xlsx"
+
+# data path and project name
+parse_data_path <-
+  dir(data_dir, full.names = TRUE) %>% 
+  parseProjName_xenium(pattern = "output[-]?") %>%
+  mutate(.counts_path = file.path(.path, "cell_feature_matrix")) %>%
+  identity()
+
+# add id for parse_data_path
+parse_data_path <- 
+  parse_data_path %>%
+  mutate(.id = seq_along(.proj))
+
+### analysis samples can be filtered by params$proj_name ###
+if(!is.null(params$proj_name)){
+  proj_exist <- params$proj_name %in% parse_data_path$.proj
+  proj_msg   <- paste0(params$proj_name[proj_exist], collapse = ",")
+  
+  if(any(!proj_exist)) stop(str_glue("Sample not found: {proj_msg}"))
+  
+  parse_data_path <- dplyr::filter(parse_data_path, .proj %in% params$proj_name)
+}
+
+# image w/h ratio
+# used to fix width and heigth ratio in In Situ Spatial plot.
+image_wh_r_ls <-
+  with(parse_data_path, split(.path, .proj)) %>%
+  map(function(x){
+    imag_wh <-
+      RBioFormats::read.metadata(
+        file.path(x, "morphology_mip.ome.tif")
+      ) %>%
+      .[[1]] %>%
+      .$coreMetadata %>%
+      .[c("sizeX", "sizeY")]
+    
+    image_wh_r <- imag_wh$sizeX/imag_wh$sizeY
+    image_wh_r
+  })
+
+
+# export project infomation
+# Annotation.csv中是样本的注释信息
+# ROI Selection中的annotation是ROI的注释信息
+if(F){
+  parse_data_path %>% 
+    readr::write_csv(anno_file)
+}
+
+# read into annotation
+if(file.exists(anno_file)){
+  anno_data <- readr::read_csv(anno_file)
+  User_columns <- colnames(anno_data)
+}else{
+  anno_data <- NULL
+  User_columns <- "project"
+}
+
+
+# seurat object
+all_data_ls <-
+  parse_data_path %>% 
+  dplyr::select(.counts_path, .proj, .id) %>%
+  pmap(function(.counts_path, .proj, .id){
+    # merge anno_data
+    if(!is.null(anno_data)){
+      row_idx <- which(anno_data$project == .proj)
+      col_idx <- anno_data %>% colnames() 
+      
+      # 没有找到当前样本的注释数据
+      #<<<<<< 所以Annotation.csv也有筛选文件的作用 >>>>>#
+      if(length(row_idx) < 1){
+        message(str_glue("Not found sample {.proj} in column: project of Annotation table.") )
+        return(NULL)
+      }
+      # 没有任何数据，报错
+      if(length(col_idx) < 1) stop("Not found any data in Annotation table.")
+      
+      meta_dat <- anno_data %>% .[row_idx, col_idx] %>% as.list()
+    }else{
+      meta_dat <- list(project = .proj)
+    }
+    
+    # 构建Seurat
+    sc <-
+      Read10X(.counts_path) %>% 
+      .[["Gene Expression"]] %>%
+      CreateSeuratObject(
+        project = .proj,
+        min.cells    = 5,
+        min.features = 5
+      ) %>%
+      AddMetaData(meta_dat) %>%
+      RenameCells(add.cell.id = .id)
+    sc
+  }) 
+all_data_ls <- all_data_ls %>% purrr::discard(is.null)
+names(all_data_ls) <- map_chr(all_data_ls, "project.name")
+
+# project number, used as condition judges
+proj_count <- length(all_data_ls)
+proj_name  <- names(all_data_ls)
+
+# doIntegrate
+if(proj_count == 1){
+  
+  if(params$doIntegrate) stop("Only one project, doIntegrate should be FALSE.")
+  
+}else if(proj_count > 1){
+  # warrning
+  if(!params$doIntegrate) stop("Multi projects existed, doIntegrate may be TRUE")
+  
+  #merge
+  all_data_ls[["Merge"]] <- mergeSeurat(all_data_ls)
+}
+
+
+# rm(all_data_ls)
+# gc()
+
+
+```
+
+<!-- load gene panel, load ROI Selection -->
+```{r load_data_2, include=FALSE}
+# panel 文件
+
+if(file.exists(file.path(data_dir, panel_file))){
+  
+  panel_dat <- file.path(data_dir, panel_file) %>% readxl::read_excel()
+  panel_gene_count <- nrow(panel_dat)
+  
+  
+}else{
+  
+  panel_dat <- NULL
+  panel_gene_count <- 280
+    
+}
+
+# cell coordinate and cell bundary
+cells_position_ls <- 
+  # with(parse_data_path, split(.path, .proj)) %>%
+  parse_data_path %>%
+  group_by(.proj) %>%
+  nest %>%
+  deframe() %>%
+  map(function(x){
+    xx <-
+      readr::read_csv(
+        file.path(x$.path, "cells.csv.gz"),
+        col_types = list(cell_id = "c")
+      ) %>%
+      mutate(cell_id = str_c(x$.id, cell_id, sep = "_"))
+    xx
+  })
+cells_position_ls <- cells_position_ls[proj_name]
+
+cells_boundary_ls <- 
+  # with(parse_data_path, split(.path, .proj)) %>%
+  parse_data_path %>%
+  group_by(.proj) %>%
+  nest %>%
+  deframe() %>%
+  map(function(x){
+    xx <-
+      readr::read_csv(
+        file.path(x$.path, "cell_boundaries.csv.gz"),
+        col_types = list(cell_id = "c")
+      ) %>%
+      mutate(cell_id = str_c(x$.id, cell_id, sep = "_"))
+    xx
+  })
+cells_boundary_ls <- cells_boundary_ls[proj_name]
+
+
+# parse ROI and ROI_annotation
+parse_roi_path <- 
+  list.files(file.path(data_dir, "ROI Selection"), full.names = TRUE)  %>%
+  parseSelectionName(filter_proj = parse_data_path$.proj) 
+
+have_rois <- (nrow(parse_roi_path) > 0)
+
+# 读取ROI及ROI_annotation
+if(have_rois){
+  ROI_annotation <- 
+    ROI_anno_file %>% 
+    readxl::read_excel() %>%
+    # mutate(ID = str_c(Tissue, Selection, sep = " | "))
+    mutate(ID = str_c(Project, Selection, sep = " | "))
+  
+  ROI_User_columns <- 
+    ROI_annotation %>%
+    colnames() %>% 
+    setdiff(c(
+      "Project",
+      "Tissue",
+      "Selection",
+      "ID"
+    ))
+  
+  ROI_ls <- 
+    parse_roi_path %>%
+    with(split(.path, .proj)) %>%
+    imap(function(path, proj){ # browser()
+      # 
+      roi_ls <- path %>% map(~ readr::read_csv(.x, skip = 2))
+      roi <-
+        roi_ls %>%
+        enframe("selection_id") %>%
+        unnest("value") %>%
+        mutate(ID = str_c(.env[['proj']], Selection, sep = " | "))
+      
+      roi
+    }) 
+  
+  # add cell into ROI
+  ROI2Cell <- 
+    ROI_ls %>%
+    imap(function(roi, proj){
+      cell_position <- cells_position_ls[[proj]]
+      if(is.null(cell_position)) stop(str_glue("Not found cell_position for tissue {proj}"))
+      
+      roi_ls <- roi %>% group_by(ID) %>% nest() %>% deframe()
+      roi_ls <-
+        lapply(roi_ls, function(x)
+        sp::point.in.polygon(cell_position$x_centroid, # point
+                             cell_position$y_centroid, # point
+                             x$X, # polygon
+                             x$Y)) %>% # polygon
+        map(as.logical) %>% # only 0 is FALSE, all others is TRUE
+        map(which) %>%
+        map(~ cell_position$cell_id[.x])
+      
+      roi_ls
+    })
+  
+}else{
+  
+  ROI_annotation <- NULL
+  ROI_User_columns <- NULL
+  ROI2Cell <- NULL
+  
+}
+
+
+```
+
+<!-- ### 测序数据质量QC   -->
+
+### 细胞表达QC {.tabshow}
+
+<!-- TODO: mito QC也应该考虑使用循环来做，而不是使用merged data来做 -->
+
+低质量、空细胞、双细胞或者多细胞会使得数据中的细胞表现出异常的基因数量。一个细胞检测到的所有UMI数量和检测到的基因数量高度相关，也会呈现出现异常高或者异常低的数据趋势。\
+低质量、死亡细胞可能会呈现出更多的线粒体污染，其表现为过高的线粒体比例。\
+根据一个细胞的检测到的基因的数值、检测到的基因Count的总数值和线粒体比例进行QC和细胞过滤。
+
+```{r mito_qc, results='asis', fig.height=6, fig.width=12}
+
+# QC_feature
+qc_metric <- c(
+  "nFeature_RNA",
+  "nCount_RNA", 
+  "log10GenesPerUMI"
+)
+
+
+## add qc metric
+all_data_ls <- all_data_ls %>%
+  map(function(sc){
+    sc[["log10GenesPerUMI"]] <- log10(sc$nFeature_RNA) / log10(sc$nCount_RNA)
+    sc
+})
+
+ ## nRNA nFeature percent.mt展示图
+mito_qc_ls <-
+  all_data_ls %>% 
+  map(function(sc){
+    
+    # use to determine the filtering criteria
+    p1 <- VlnPlot(object = sc,
+            features = qc_metric,
+            group.by  =  "project",
+            ncol = 3,
+            # log = T,
+            pt.size = 0)
+      # geom_hline(yintercept = 0.985)
+    p1 <-
+      p1 & scale_y_continuous(
+      breaks = function(x){
+        xx <- round(x)
+        
+        # 5代表分为5个breaks
+        # 10代表以10的倍数进行划分breaks
+        steps <- if(xx[2] < 100){
+          scaled_times <- ceiling(100/xx[2])
+          
+          floor((scaled_times * xx[2] / 5 ) / 10 ) * 10 / scaled_times
+        }else{
+          floor((xx[2] / 5 ) / 10 ) * 10
+        }
+        
+        # 最小值都是0
+        bk <- seq(0, xx[2], by = steps)
+        
+        # 第一间隔细分
+        bk_minor <- seq(bk[1], bk[2], length.out = 5)
+        bk <- c(bk_minor, bk[-(1:2)])
+        
+        # 最后间隔细分
+        bk <- rev(bk)
+        bk_minor <- seq(bk[1], bk[2], length.out = 5)
+        bk <- c(bk_minor, bk[-(1:2)])
+        bk <- rev(bk)
+        
+        bk
+      }
+    )
+    p1
+  })
+
+if(proj_count > 1){
+  mito_qc_ls[["Merge_vlnplot"]] <- mito_qc_ls[["Merge"]]
+  mito_qc_ls[["Merge"]] <- NULL
+  mito_qc_ls[["Merge_density"]] <-
+    all_data_ls$Merge[[]] %>%
+    dplyr::select(project, all_of(qc_metric)) %>%
+    pivot_longer(
+      -project,
+      names_to = "QC_metric",
+      values_to = "Value"
+    ) %>%
+    mutate(QC_metric = factor(QC_metric, levels = qc_metric)) %>%
+    ggplot(aes(x = Value, fill = project)) +
+      geom_density(alpha = 0.4)+
+      facet_wrap(~QC_metric, scales = "free", ncol = 3)+
+  	  ggpubr::theme_pubclean() +
+      labs(x = NULL,
+           y = NULL)
+}
+
+mito_qc_ls %>%
+  walk2(names(.), function(p, grp){
+    if(proj_count > 1){
+      cat(str_glue("####  {grp}\n\n"))
+    }
+    print(p)
+    cat("  \n\n")
+  })
+```
+
+
+```{r, include=FALSE}
+# initial excel file: mito_qc.xlsx
+mito_qc_path <- file.path(data_dir, "mito_qc.csv")
+if(!file.exists(mito_qc_path)){
+  # 上限
+  # nFeature_cutoff <- all_data_ls[["Merge"]][["nFeature_RNA"]] %>% unlist %>% {mean(.)+3*sd(.)} %>% round()
+  # nCount_cutoff <- all_data_ls[["Merge"]][["nCount_RNA"]] %>% unlist %>% {mean(.)+3*sd(.)} %>% round()
+  
+  if(proj_count < 2){
+    nFeature_cutoff <- all_data_ls[[1]][["nFeature_RNA"]] %>% unlist %>% quantile(0.9) %>% round()
+    nCount_cutoff <- all_data_ls[[1]][["nCount_RNA"]] %>% unlist %>% quantile(0.9) %>% round()
+  }else{
+    nFeature_cutoff <- all_data_ls[["Merge"]][["nFeature_RNA"]] %>% unlist %>% quantile(0.9) %>% round()
+    nCount_cutoff <- all_data_ls[["Merge"]][["nCount_RNA"]] %>% unlist %>% quantile(0.9) %>% round()
+  }
+  
+  
+  origin_mito_qc <-
+    data.frame(
+      proj               = proj_name,
+      nFeature_RNA       = paste0(">10"), # paste0(">10; <", nFeature_cutoff),
+      # nCount_RNA         = paste0(">20"), # paste0(">20; <", nCount_cutoff),
+      log10GenesPerUMI   = ">0.6"
+    )
+
+  readr::write_csv(origin_mito_qc, mito_qc_path)
+}
+
+```
+
+<!-- 确定每个项目的nRNA和mito_QC的值 -->
+
+```{r, include=FALSE}
+# read into qc criteria
+origin_mito_qc <- 
+  # readxl::read_excel(mito_qc_path) %>%
+  readr::read_csv(mito_qc_path) %>%
+  group_by(proj) %>%
+  nest %>%
+  deframe()
+
+parsed_mito_qc <-
+  origin_mito_qc%>%
+  map(function(x){
+    # browser()
+    x %>% map(
+      function(col){
+        col %>% 
+          str_split(pattern = "[ ;]+") %>%
+          .[[1]] %>%
+          map(parse_qc_criteria)
+      }
+    )
+  })
+
+```
+
+<!-- 根据qc criteria筛选cell -->
+
+### 细胞过滤 {.tabshow}
+
+```{r, results='asis', fig.height = 10, fig.width=12}
+
+if(proj_count > 1){
+  all_data_ls$Merge <- NULL
+}
+
+# befor mito filter
+before_filter_qc <- all_data_ls %>%
+  map2(names(.), function(sc, proj){
+    # befor mito filter
+    p1 <- FeatureScatter(object = sc, 
+                         feature1 = "nCount_RNA", 
+                         feature2 = "nFeature_RNA",
+                         group.by = "project")
+    
+    
+    p2 <- FeatureScatter(object = sc, 
+                         feature1 = "nCount_RNA", 
+                         feature2 = "log10GenesPerUMI",
+                         group.by = "project")
+    
+    p <- p1 + p2 +
+        plot_annotation(title = str_glue("{proj}: Before.qc.filter")) + 
+        plot_layout(nrow=1, guides = "collect") &
+        theme(legend.position = "top")
+    p
+  })
+
+# 去除基因总量异常的cell
+all_data_ls_pass <- 
+  all_data_ls %>%
+  imap(qc_ls = parsed_mito_qc, function(sc, name, qc_ls){
+    
+    # qc参数
+    if(!name %in% names(qc_ls)){
+      stop(str_glue("Please check QC table, {name} not found qc criteria..."))
+    }
+    
+    qc <- qc_ls[[name]]
+    # browser()
+    sc_have_name <- is.null(names(sc))
+    qc_have_name <- is.null(names(qc))
+    
+    if(all(sc_have_name, qc_have_name)){
+      stopifnot(all(names(sc) == names(qc)))
+    }
+    
+    combined_idx <-
+      qc %>%
+      map2(names(.), function(conds, var){#  browser()
+      # var: nFeture_RNA percent.mt
+        combined_idx_per_var <-
+          conds %>% 
+              map(~eval_parsed_criteria(.x, others = sc[[var]], verbose = FALSE)) %>%
+              purrr::reduce(`&`)
+        combined_idx_per_var
+      }) %>%
+      purrr::reduce(`&`)
+    
+    if(sum(combined_idx) < 1){
+      stop(str_glue("No cell pass the qc criteria, is qc criteria of {name} too much strict?"))
+    }
+    # return
+    sc[, which(combined_idx)]
+})
+
+# after mito filter
+after_filter_qc <- all_data_ls_pass %>%
+  map2(names(.), function(sc, proj){
+    # befor mito filter
+    p1 <- FeatureScatter(object = sc, 
+                         feature1 = "nCount_RNA", 
+                         feature2 = "nFeature_RNA",
+                         group.by = "project") 
+    
+    p2 <- FeatureScatter(object = sc, 
+                         feature1 = "nCount_RNA", 
+                         feature2 = "log10GenesPerUMI",
+                         group.by = "project")
+    
+    p <- p1 + p2 +
+        plot_annotation(title = str_glue("{proj}: After.qc.filter")) + 
+        plot_layout(nrow = 1, guides = "collect") &
+        theme(legend.position = "top")
+    p
+  })
+
+
+# print the image
+qc_filter <- 
+  map2(before_filter_qc, 
+     after_filter_qc, 
+     function(before, after){
+       cowplot::plot_grid(before, after, ncol = 1)
+     })
+qc_filter %>%
+  walk2(names(.), 
+     function(p, name){
+       if(proj_count > 1){
+        cat(str_glue("####  {name}\n\n"))
+      }
+      print(p)
+      cat("  \n\n")
+  })
+
+
+```
+
+
+```{r filter_info, results='asis'}
+cat(str_glue("####  细胞筛选数据\n\n"))
+
+cell_count_before <- all_data_ls      %>% map(ncol) %>% enframe(name = "Sample", value = "Before filter")
+cell_count_after  <- all_data_ls_pass %>% map(ncol) %>% enframe(name = "Sample", value = "After filter")
+
+# print 
+cell_count_df <- cell_count_before %>% left_join(cell_count_after, by = "Sample")
+
+kable(cell_count_df, format = params$tb_output) %>% 
+kable_styling("striped", full_width = T)
+
+cat("\n\n")
+```
+
+
+```{r,include=FALSE}
+# gc
+if(params$gc){
+  rm(all_data_ls)
+  gc()
+  invisible(NULL)
+}
+```
+
+
+### Normalize
+
+单细胞转录组数据的真是物理学效应往往伴随着技术噪声如测序深度，因此在进行进一步分析之前需要先进预处理和Normalization。
+<!-- 由于每个细胞表达的RNA总量都有差异，即便是同一种类型的细胞也是存在差异，因此单纯使用固定所有细胞的RNA总量为一个固定值的Normalization方法是不能很好的去除这种技术噪声的。\ -->
+<!-- 使用一种对每一个基因的数据都进行建模（负二项分布）的方式去除测序深度的影响可以有效的解决测序深度的影响的问题。 -->
+
+```{r, include=FALSE}
+# params$norm_method <- match.arg(params$norm_method, c("SCT", "LogNormalize"))
+
+if(params$norm_method == "SCT"){
+  all_data_ls_pass <-
+    all_data_ls_pass %>% 
+    map(function(sc){
+        SCTransform(
+          sc, 
+          variable.features.n = panel_gene_count * 0.9,
+          # vst.flavor = "v2",
+          vars.to.regress = c(
+          ), 
+        verbose = FALSE)
+    })
+}else if(params$norm_method == "LogNormalize"){
+  all_data_ls_pass <-
+    all_data_ls_pass %>% 
+    map(function(sc){
+      sc %<>%
+        NormalizeData() %>% 
+        # Breast only have 300 genes.
+        FindVariableFeatures(selection.method = 'vst', nfeatures = panel_gene_count * 0.9) %>%
+        ScaleData(
+            vars.to.regress = c(
+            ), 
+	      ) 
+    })
+}else{
+  stop(str_glue("Wrong Normalize method: {params$norm_method}"))
+}
+
+
+
+```
+
+## 数据分析结果
+
+如果有多个样本的单细胞数据，则默认会使用Seurat的IntegrateData流程对多样本进行整合。Seurat的多样本整合IntegrateData的原理如下：
+
+1.  首先指定一个样本或多个样本作为reference，其他样本称为query，query和reference两两寻找细胞间的Anchor pair。如果不指定reference，则所有样本两两寻找Anchor；   
+
+2.  寻找Anchor pair就是寻找query和reference中关系最相近的细胞对。首先对query和reference进行CCA (Canonical Correlations Analysis)降维，接着进行KNN (K-NearestNeighbor)分析，默认取前20个CC组分进行KNN分析，那么前5 (默认k.anchor=5)的NN细胞就是初始的Anchor对；然后这些Anchor需要进行筛选，从原来的CCA降维结果中对query数据寻找到最多不超过200(max.features=200)个的TOP贡献基因，然后使用这些基因的表达数据集重新进行KNN分析，如果这个Anchor的细胞确实也在新的KNN结果的前200 (k.filter=200)个NN中，则保留此Anchor；    
+
+3. 对Anchor进行打分，流程如下，将query和reference两两或者自身进行KNN分析，则可以得到四个KNN结果：query-query、 reference-reference、 query-reference、 reference-query，对于每一个Anchor中的两个细胞，分别可以得到它在reference及query数据集中的NN，默认取前30(k.score=30)个NN，那么两个Anchor细胞的交集NN数量除以并集NN数量就是Anchor Score，这个Score会使用0.01-0.9分位数标准化为0-1以消除异常值的影响；   
+
+4. 对于query数据的所有细胞，先将其和Anchor中记录的query细胞做KNN，获得每一个细胞的100(k.weight=100)个NN，这样可以保证每个细胞都有Anchor可以去校正(毕竟不是所有的query细胞都存在于筛选后的Anchor中)，
+然后每个NN细胞在Anchor pair中出现不止一次，因此找到每个NN实际在Anchor pair中的位置，所以一个query细胞通过100个NN映射到了所有的Anchor pair中。由于query细胞与NN之间的关系有远近，这个关系使用KNN的distance衡量（distance做标准化，然后使用1减去标准化distance作取反处理），另外Anchor pair存在大小关系，这个关系使用Anchor Score来衡量。
+最后可以获得一个行为所有的Anchor pair，列是所有的query细胞的weight矩阵，这个矩阵中的每一个值都是这个distance和score的乘积，然后使用一个高斯核来平滑这个值。最后还需要将这个矩阵的每一列做除以列加和的标准化处理。
+
+5. 由于query和reference之间的差别可以通过一个差值矩阵B来衡量，它是一个行是feature列是所有Anchor的矩阵(Seurat代码中这个矩阵被转置了，那么就是t(weight) * B就是转行是细胞列是基因的表达校正矩阵），那么B * t(Weight)就是query和reference的校正矩阵了；
+
+6. 超出两个的多样本整合时，还会根据Anchor数量和细胞数量的关系对所有样本做一个层次聚类，获取样本两两整合的先后顺序。
+
+<!-- 数据整合 -->
+
+```{r, include=FALSE, cache=FALSE, eval=FALSE}
+# object id used as reference in integration
+IntegrateReferId <-
+  findReference(
+    all_data_ls_pass,
+    name =  proj_name[1] 
+  )
+
+
+### 数据整合 ###
+if(params$doIntegrate){
+  #<<<<<<< 整合 >>>>>>>#
+  if(proj_count > 1){
+    if(params$norm_method == "SCT"){
+      all_data_ls_pass %<>% map(~{DefaultAssay(.x) <- "SCT"; .x})
+    }else{
+      all_data_ls_pass %<>% map(~{DefaultAssay(.x) <- "RNA"; .x})
+    }
+    
+    # 选择用于整合的基因
+    features <- SelectIntegrationFeatures(
+      object.list = all_data_ls_pass, 
+      assay = rep(ifelse(params$norm_method == "SCT", "SCT", "RNA"), times = proj_count),
+      nfeatures = panel_gene_count
+    )
+    
+    # 准备整合
+    if(params$norm_method == "SCT"){
+      all_data_ls_pass <- 
+        PrepSCTIntegration(
+          object.list = all_data_ls_pass, 
+          anchor.features = features
+        )
+    }
+    
+    # do PCA  first?
+    if(params$integrateMethod == "rpca"){
+      for(i in seq_along(all_data_ls_pass) ){
+        all_data_ls_pass[[i]] <- all_data_ls_pass[[i]] %>% RunPCA()
+      }
+    }
+    
+    # 寻找锚定基因(速度很慢) # 5min 21s
+    AnchorSet <- 
+      FindIntegrationAnchors(
+        object.list = all_data_ls_pass,
+        reference   = IntegrateReferId,
+        normalization.method = params$norm_method, # !important
+        anchor.features      = features,
+        reduction            = params$integrateMethod #<---- CCA往往无法运行成功 --------
+      )
+    
+    # 非active assay置为空，否则IntegrateData中会报错
+    # AnchorSet2 <- AnchorSet
+    # AnchorSet2@object.list %<>% 
+    #   map(~{
+    #     assay <- DefaultAssay(.x)
+    #     .x@assays <- .x@assays[assay]
+    #     .x
+    #   })
+    
+    # do integration
+    all_data <- 
+      IntegrateData(
+        AnchorSet, 
+        normalization.method = params$norm_method # !important
+      )
+    
+  }else{
+    # 如果只有一组数据，不需要进行integrate，只需要取出第一个数据即可
+    all_data <- all_data_ls_pass[[1]]
+  }
+}else{
+  #<<<<<<< 不做整合 >>>>>>>#
+  
+  # 如果不做整合主要是用于单个样本的情况
+  # 但是也会有多个样本的情况，使用merge方法合并
+  
+  if(proj_count > 1){
+    all_data <- mergeSeurat(all_data_ls_pass)
+  }else{
+    # 如果只有一组数据，不需要进行integrate，只需要取出第一个数据即可
+    all_data <- all_data_ls_pass[[1]]
+  }
+  
+}
+
+### 整合后处理 ###
+# proj_count == 1不需要处理
+if((params$norm_method == "LogNormalize") && proj_count > 1){
+  # 如果多个样本，但是没有整合话的，则all_data是mergeSeurat合并的，是一个全新的没有处理的数据
+  # 此时运行pipeline往往是没有意义的，当时还是加上FindVariable、Scale等步骤
+  # 如果是一个样本，则不需要再运行这里了，因为已经做了预处理三部曲
+  
+  if(!params$doIntegrate){
+    DefaultAssay(all_data) <- "RNA"
+    all_data <- FindVariableFeatures(
+      all_data,
+      assay = "RNA",
+      selection.method = 'vst', 
+      nfeatures = panel_gene_count * 0.9) 
+  }
+  
+  # 使用merge合并的非整合数据也需要重新ScaleData
+  # LogNormalize的整合数据需要重新ScaleData
+  all_data <- ScaleData(all_data)
+}
+
+if((params$norm_method == "SCT") && (proj_count > 1) && (!params$doIntegrate)){
+  # 多个SCT样本，却没有整合
+  # 重新SCT处理
+  
+  all_data <-
+    SCTransform(
+      all_data,
+      variable.features.n = panel_gene_count * 0.9,
+      # vst.flavor = "v2",
+      vars.to.regress = c(),
+      verbose = FALSE
+    )
+}
+```
+
+```{r, include=FALSE}
+# saveRDS(all_data, "all_data.rds")
+all_data <- readRDS("all data/all_data.rds")
+
+# gc
+if(params$gc){
+  rm(all_data_ls_pass)
+  rm(AnchorSet)
+  gc()
+  invisible(NULL)
+}
+```
+
+### 降维分析 {.tabshow}
+
+```{r pca, include=FALSE, eval=FALSE}
+
+if(is.null(params$ndims) || (params$ndims <= 0) ){
+  
+  if(params$norm_method == "LogNormalize"){
+    ndims <- 10
+  }else if(params$norm_method == "SCT"){
+    ndims <- 30
+  }else{
+    stop(str_glue("Wrong normlize method {params$norm_method}"))
+  }
+  
+}else{
+  
+  ndims <- params$ndims
+  
+}
+
+# Run PCA
+all_data <- RunPCA(all_data)
+
+if(params$norm_method == "LogNormalize"){
+  # all_data <- JackStraw(all_data, num.replicate = 100)
+  # all_data <- ScoreJackStraw(all_data, dims = 1:20)
+  # 
+  # JackStrawPlot(all_data, dims = 1:20)
+  ElbowPlot(all_data)
+}
+
+# 寻找对细胞差异贡献度较大的主成分
+
+# t-SNE分析，基于PCA分析结果进行非线性降维分析
+all_data <- RunTSNE(
+  all_data,  
+  dims = 1:ndims, 
+  check_duplicates = FALSE, 
+  num_threads = 0 # multi thread
+) 
+
+# UMAP分析
+  all_data <- RunUMAP(all_data,  dims = 1:ndims)
+
+```
+
+
+```{r, include=FALSE}
+# saveRDS(all_data, "all_data.rds")
+all_data <- readRDS("all data/all_data_dr.rds")
+
+```
+
+
+```{r, results='asis', fig.width=12, fig.height=6}
+p_dim_ls <- 
+  User_columns %>%
+  c("Phase", qc_metric) %>%
+  unique() %>%
+  set_names(., .) %>%
+  map(function(var, sc = all_data){
+    
+    # only existed vars run DimPlot
+    sc_vars <- colnames(sc[[]])
+    
+    if(!var %in% sc_vars ){
+      return(NULL)
+    }
+    
+    # DimPlot run before had run tsne or umap
+    dim_list_ori <- c("tsne", "umap")
+    dim_list <- dim_list_ori[dim_list_ori %in% Reductions(sc)]
+    
+    if(length(dim_list) < 1){
+      stop(str_glue("\n\n{dim_list_ori} not found, please run Run{toupper(dim_list_ori)} first..."))
+    }
+    
+    p_ls <-
+      dim_list %>%
+      map(function(dim){
+        if(is.numeric(unlist(sc[[var]]))){
+          # 连续变量
+          FeaturePlot(object = sc,
+                  reduction  = dim,
+                  features   = var,
+                  raster = TRUE,
+                  dims = c(1, 2))
+        }else{
+          # 离散变量
+          DimPlot(object = sc, 
+              reduction = dim, 
+              group.by = var,
+              dims = c(1,2),
+              shuffle = TRUE,
+              label = TRUE,
+              label.size = 4,
+              label.color = "black",
+              label.box = TRUE,
+              repel = TRUE,
+              raster = TRUE,
+              sizes.highlight = 1)
+        }
+        
+      })
+    
+    # should plot combined?
+    if(length(dim_list) == 1) {
+      p <- p_ls[[1]]
+    }else{
+      p <-wrap_plots(p_ls) +
+        plot_layout(guides = "collect") &
+        theme(legend.position = "top") 
+    }
+    
+    p
+  })
+# remove null plot
+p_dim_ls <- p_dim_ls[!map_lgl(p_dim_ls, is.null)]
+
+
+
+
+# 合并两种降维方法的结果
+p_dim_ls %>% 
+  iwalk(function(p, name){
+    cat(paste0("\n\n#### ", name," {.unnumbered}   \n\n"))
+    print(p)
+    cat("\n\n")
+  })
+
+```
+
+### 聚类分析
+
+```{r cluster, include=FALSE}
+# acive assay
+# proj_count > 1
+
+if(params$doIntegrate){
+  DefaultAssay(all_data) <- "integrated"
+}else{
+  if(params$norm_method == "SCT"){
+    DefaultAssay(all_data) <- "SCT"
+  }else{
+    DefaultAssay(all_data) <- "RNA"
+  }
+}
+
+# KNN聚类法
+all_data <- FindNeighbors(
+  all_data,
+  k.param = 20, # 不要小于5
+  dims = 1:ndims
+)
+all_data <-
+  reduceFindClusters(
+    all_data,
+    resolution = 0.1,
+    resolution_range = c(0.1, 2),
+    cluster_range = c(10, 50),
+    verbose = TRUE,
+    return_best_if_none_fit = TRUE,
+    random.seed = 1234
+  )
+
+# cluster数量
+cluster_counts <- n_distinct(all_data[["seurat_clusters"]])
+
+```
+
+```{r print_cluster, fig.height=6, fig.width=12}
+
+# plot
+p1 <- DimPlot(
+  object = all_data,
+  reduction = "tsne",
+  #group.by = "seurat_clusters",
+  label.box = TRUE,
+  repel = TRUE,
+  pt.size = 0.5,
+  label = TRUE
+)
+
+p2 <- DimPlot(
+  object = all_data,
+  reduction = "umap",
+  #group.by = "seurat_clusters",
+  label.box = TRUE,
+  repel = TRUE,
+  pt.size = 0.5,
+  label = TRUE
+)
+
+(p1 + p2 +
+    plot_layout(guides = "collect") &
+    theme(legend.position = "top")) %>%
+  print()
+
+```
+
+### Cell Marker {.tabshow}
+
+如果是多个样本则使用FindConservedMarkers在每个样本中对每个cluster进行统计分析寻找Marker
+gene，统计分析默认使用wilcox.test，多个样本中的差异分析结果使用metap包的minimump方法进行p值合并。\
+如果是一个样本，则使用FindAllMarkers获得对每个cluster进行统计分析寻找Marker
+gene，默认使用Wilcox.test。
+
+Marker Gene的选择标准，依次进行如下三项筛选：
+<!-- （1）首先按照在当前cluster中的表达比例进行排序，越高越好，最多获得排名前20的基因； -->
+<!-- （2）再按照p.value进行排序，越低越好，最多获得排名前10的基因； -->
+<!-- （3）最后按照avg_log2FC进行排序，如果是多个样本的结果，则取多个样本的avg_log2FC的均值作为最终的avg_log2FC，越高越好，最多获得排名前5的基因。 -->
+（1）首先按照在当前cluster中的表达比例进行排序，越高越好；
+（2）再按照p.value进行排序，越低越好；
+（3）最后按照avg_log2FC进行排序，如果是多个样本的结果，则取多个样本的avg_log2FC的均值作为最终的avg_log2FC，越高越好。    
+综合三项指标的排名，把排序前5的基因作为Cluster Marker。
+
+```{r cell_marker, include=FALSE, cache=FALSE}
+# 是否有进行integrated的数据集
+have_integrated <- "integrated" %in% getAssayName(all_data)
+
+# # 差异表达和展示均使用SCT数据集
+# DefaultAssay(all_data) <- "SCT"
+
+
+if(have_integrated ){
+  if(params$norm_method == "SCT"){
+    # 进行差异表达和展示之前先将SCT中的数据进行counts correct
+    # 将所有数据集调整为同一的log_umi值进行counts corrected
+    all_data <- all_data %>% PrepSCTFindMarkers()
+    
+    DefaultAssay(all_data) <- "SCT" #差异表达分析时使用
+  }else{
+    DefaultAssay(all_data) <- "RNA" #差异表达分析时使用
+  }
+  
+  
+  # integrated  data: FindConservedMarkers
+  # values: "I2A_p_val" "I2A_avg_log2FC" "I2A_pct.1" "I2A_pct.2" "I2A_p_val_adj" "max_pval" "minimump_p_val"
+  if(length(params$read_all_marker) == 1 && params$read_all_marker && file.exists("all_marker.rds")){
+    
+    all_markers <- readRDS("all_marker.rds")
+    
+  }else{
+    all_markers <-
+      FindAllConservedMarkers(
+        all_data,
+        grouping.var = "project",
+        test.use = "wilcox",
+        logfc.threshold = 0, #0.25,
+        min.pct  = 0.1,
+        only.pos = TRUE
+      )
+    saveRDS(all_markers, file = "all_marker.rds")
+  }
+
+  all_markers <-
+    all_markers %>%    
+    map(rownames_to_column, "gene") %>%
+    map(rowwise) %>%
+    # only.pos=TRUE，因此这里没有取绝对值
+    map(mutate, avg_log2FC = mean(c_across(ends_with("avg_log2FC")))) %>% 
+    map(mutate, pct.1 = mean(c_across(ends_with("pct.1")))) %>% #pct.1：表达此基因的细胞比例
+    map(ungroup) %>%
+    map(function(x){
+      # 如果某一个cluster只隶属于一个样本，则不会进行p值合并
+      # 导致缺少minimump_p_val那一列
+      all_cols <- colnames(x)
+      if(!"minimump_p_val" %in% all_cols){
+        # sample1_p_val sample1_p_val_adj
+        p_col <- str_subset(all_cols, '_p_val_adj$')
+        if(length(p_col) < 1) stop("Not found column ends with _p_val_adj")
+        else if(length(p_col) > 1) warning("column ends with _p_val_adj should only have one if not found minimump_p_val.")
+        
+        x[['minimump_p_val']] <- x[[p_col]]
+      }
+      x
+    }) %>%
+    map(mutate, p.value = minimump_p_val) %>%
+    map(as.data.frame)
+
+
+
+}else{
+  # 不是intergrated则FindAllMarkders
+  # values:gene p_val avg_log2FC pct.1 pct.2 p_val_adj p.value 
+  if(length(params$read_all_marker) == 1 && params$read_all_marker && file.exists("all_marker.rds")){
+    
+    all_markers <- readRDS("all_marker.rds")
+    
+  }else{
+    all_markers <-
+      FindAllMarkers(
+        all_data,
+        test.use = "wilcox",
+        logfc.threshold = 0, #0.25,
+        min.pct  = 0.1,
+        only.pos = TRUE
+      )
+    all_markers <-
+      all_markers %>%
+      group_by(cluster) %>% 
+      nest() %>%
+      deframe()
+    
+    saveRDS(all_markers, file = "all_marker.rds")
+  }
+  
+  all_markers <-
+    all_markers %>%
+    map(mutate, p.value = p_val_adj) %>% 
+    map(dplyr::select, gene, everything()) %>%
+    map(as.data.frame)
+}
+
+# marker gene must have the highest expression in the cluster
+# heightest_gene <-
+#   AverageExpression(
+#     all_data, 
+#     assays = "SCT",
+#     slot = "data"
+#   ) %>%
+#   .$SCT %>%
+#   apply(1, function(x) rank(-x)) %>% 
+#   apply(1, function(x, name) name[which(x == 1)], name = colnames(.))
+
+# all_markers_filter <- 
+#   all_markers %>% 
+#   map2(names(.), ~ dplyr::filter(.x, gene %in% heightest_gene[[.y]]))
+
+# filter final marker gene
+# all_markers_final <-
+#   all_markers %>% 
+#   enframe(name = "cluster") %>%
+#   mutate(cluster = as.numeric(cluster)) %>%
+#   unnest("value") %>%
+#   group_by(cluster) %>%
+#   slice_max(pct.1, n = 20) %>%
+#   slice_min(p.value, n = 10) %>%
+#   slice_max(avg_log2FC, n = 5)
+
+all_markers_final <- 
+  all_markers %>%
+  enframe(name = "cluster") %>%
+  mutate(cluster = as.numeric(cluster)) %>%
+  unnest("value") %>%
+  group_by(cluster) %>%
+  # mutate(
+  #   rank.pct.1 = rank(-pct.1), # rank默认最小排序为1， 相反数则最大值排序为1
+  #   rank.p.value = rank(p.value),
+  #   rank.avg_log2FC = rank(-avg_log2FC),
+  #   total_rank = rank.pct.1 + rank.p.value + rank.avg_log2FC
+  # ) %>%
+  # arrange(total_rank, .by_group = TRUE) %>%
+  # arrange(desc(avg_log2FC), p_val, desc(pct.1)) %>% # <-------------- p_val? ------------
+  arrange(desc(avg_log2FC), p.value, desc(pct.1)) %>% 
+  dplyr::slice_head(n = 5)
+
+# used for enrichment
+all_markers_forEnrichment <-
+  all_markers %>% 
+  enframe(name = "cluster") %>%
+  mutate(cluster = as.numeric(cluster)) %>%
+  unnest("value") %>%
+  group_by(cluster) %>%
+  dplyr::filter(pct.1 >= 0.1) %>%
+  dplyr::filter(p.value <= 0.05) %>%
+  dplyr::filter(avg_log2FC >= 1) 
+  # slice_max(avg_log2FC, n = 10) %>%
+  # arrange(desc(pct.1), .by_group = TRUE)
+
+
+```
+
+<!-- dotplot -->
+
+```{r dotplot, results='asis', fig.height=cluster_counts * 1/3 + 1, fig.width=max(cluster_counts/3*2 + 1, 10)}
+cat("\n\n#### DotPlot {.unnumbered} \n\n")
+DotPlot(
+  all_data,
+  assay = ifelse(params$norm_method == "SCT", "SCT", "RNA"),
+  features = unique(all_markers_final$gene)
+) +
+  theme(
+    axis.text.x = element_text(
+      angle = 90,
+      hjust = 1,
+      vjust = 0.5
+    )
+  )
+cat("\n\n")
+
+```
+
+
+<!-- vlnplot -->
+
+```{r vlnplot ,results='asis', fig.height=6, fig.width=cluster_counts}
+
+# 仅展示第一个Gene
+cluster_marker_only_first <-
+  all_markers_final %>%
+  group_by(cluster) %>%
+  slice_head(n = 1) 
+
+
+all_marker_p_ls <-
+  cluster_marker_only_first$gene %>% 
+  set_names(str_c('Cluster_', cluster_marker_only_first$cluster)) %>%
+  map(function(marker){
+    p_vln <-
+      VlnPlot(
+        all_data,
+        raster = TRUE,
+        features = marker
+      )
+    p_feature <-
+      FeaturePlot(
+        all_data,
+        raster = TRUE,
+        features = marker
+      )
+    list(
+      VlnPlot = p_vln,
+      FeaturePlot = p_feature
+    )
+  }) %>%
+  purrr:::transpose()
+
+
+# type: VlnPlot 
+cat(paste0("\n\n#### VlnPlot {.tabshow .unnumbered}   \n\n"))
+
+all_marker_p_ls$VlnPlot %>% 
+  walk2(names(.), function(p, cluster){
+    cat(paste0("\n\n##### ", cluster, "{.nunumbered}  \n\n"))
+    p %>% print()
+    cat("\n\n")
+  })
+
+cat("\n\n")
+    
+
+
+```
+
+
+```{r FeaturePlot, results='asis', fig.height=6, fig.width=8}
+
+# type:  FeaturePlot
+cat(paste0("\n\n#### FeaturePlot {.tabshow .unnumbered}   \n\n"))
+
+all_marker_p_ls$FeaturePlot %>% 
+  walk2(names(.), function(p, cluster){
+    cat(paste0("\n\n##### ", cluster, "{.nunumbered}  \n\n"))
+    p %>% print()
+    cat("\n\n")
+  })
+
+cat("\n\n")
+
+```
+
+### 富集分析(by cluster)  
+
+```{r enrichment, include=FALSE}
+if(params$organism == "hsa"){
+  organism <- "human"
+  org.db <- 'org.Hs.eg.db'
+}else if(params$organism == "mmu"){
+  organism <- "mouse"
+  org.db <- 'org.Mm.eg.db'
+}else{
+}
+
+all_markers_gene <-
+  all_markers_forEnrichment %>% 
+  group_by(cluster) %>%
+  nest() %>%
+  deframe() %>%
+  map("gene") %>%
+  map(function(x){
+    gene <- clusterProfiler::bitr(
+      x,
+      fromType = "SYMBOL",
+      OrgDb = org.db,
+      toType = "ENTREZID")  %>%
+    .$ENTREZID
+    gene
+  })
+
+eRPA <- all_markers_gene %>%
+  map(function(gene){
+    ReactomePA::enrichPathway(
+      gene,
+      organism = organism,
+      pvalueCutoff = 0.1
+    )
+  })
+
+
+ego <- 
+  all_markers_gene %>%
+  map(function(gene){
+    clusterProfiler::enrichGO(
+      gene,
+      OrgDb = org.db,
+      ont = "ALL",
+      pvalueCutoff = 0.1,
+      readable = FALSE,
+      pool = FALSE
+    )
+  })
+
+
+ekk <- 
+  all_markers_gene %>%
+  map(function(gene){
+    clusterProfiler::enrichKEGG(
+      gene,
+      organism = params$organism,
+      keyType = "kegg",
+      pvalueCutoff = 0.1,
+      use_internal_data = FALSE
+    )
+  })
+
+```
+
+#### GO富集分析 {.tabshow}
+
+```{r go_plot, results='asis', fig.height=9, fig.width=15}
+
+cluster_counts %>% 
+  seq_len() %>% 
+  {. - 1} %>%
+  walk(function(cluster){
+    cluster <- as.character(cluster)
+    enrich <- ego[[cluster]]
+    
+    cat(paste0("##### Cluster", cluster, " {.unnumbered} \n\n"))
+    # 1
+    if(length(enrich) < 1 || nrow(as.data.frame(enrich)) < 1){
+      cat("<p> Not found signicant item... </p> \n\n")
+      return(NULL)
+    }
+    
+    # 2
+    p <- enrich %>% clusterProfiler::dotplot(showCategory = 10, label_format = 60, split = "ONTOLOGY")
+    p <- p + facet_wrap(~ ONTOLOGY, scales = "fixed") 
+    print(p)
+    cat("\n\n")
+    
+  })
+
+```
+
+#### KEGG富集分析 {.tabshow}
+
+```{r kegg_plot, results='asis', fig.height=6, fig.width=8}
+
+cluster_counts %>% 
+  seq_len() %>% 
+  {. - 1} %>%
+  walk(function(cluster){
+    cluster <- as.character(cluster)
+    enrich <- ekk[[cluster]]
+    
+    cat(paste0("##### Cluster", cluster, " {.unnumbered} \n\n"))
+    # 1
+    if(length(enrich) < 1 || nrow(as.data.frame(enrich)) < 1){
+      cat("<p> Not found signicant item... </p> \n\n")
+      return(NULL)
+    }
+    
+    # 2
+    p <- enrich %>% clusterProfiler::dotplot(showCategory = 10, label_format = 80)
+    print(p)
+    cat("\n\n")
+    
+  })
+
+```
+
+#### Reactome富集分析 {.tabshow}
+
+```{r reactome_plot, results='asis', fig.height=6, fig.width=8}
+
+cluster_counts %>% 
+  seq_len() %>% 
+  {. - 1} %>%
+  walk(function(cluster){
+    cluster <- as.character(cluster)
+    enrich <- eRPA[[cluster]]
+    
+    cat(paste0("##### Cluster", cluster, " {.unnumbered} \n\n"))
+    # 1
+    if(length(enrich) < 1 || nrow(as.data.frame(enrich)) < 1){
+      cat("<p> Not found signicant item... </p> \n\n")
+      return(NULL)
+    }
+    
+    # 2
+    p <- enrich %>% clusterProfiler::dotplot(showCategory = 10, label_format = 80)
+    print(p)
+    cat("\n\n")
+    
+  })
+
+```
+
+
+### 细胞注释 {.tabshow}    
+
+
+```{r cell_annotation, include=FALSE}
+
+if(!is.null(panel_dat)){
+  all_markers_gene <-
+    all_markers %>%
+    map(function(x){
+      x %>%
+        arrange(p.value, desc(avg_log2FC), desc(pct.1)) %>%
+        dplyr::pull(gene)
+    })
+  panel_ls <- panel_dat %>% with(split(Name, Annotation))
+  annotate_scores <-
+    all_markers_gene %>%
+    map(function(x){
+      x %>% annotate_cluster(panel_ls)
+    }) %>%
+    map(annotate_Q_val) %>%
+    map(as.data.frame, check.names = FALSE) %>%
+    do.call(rbind, .) 
+  
+  # rename idents
+  cluster_annotation <- structure(
+    annotate_scores$first_cell, 
+    names = rownames(annotate_scores)
+  )
+  
+  all_data_annotation <- renameIdents(all_data, cluster_annotation)
+  
+  # 保存细胞注释信息
+  all_data_annotation <- StashIdent(all_data_annotation, save.name = "celltype")
+  
+  eval_enrich <- TRUE
+}else{
+  all_data_annotation <- all_data
+  all_data_annotation[['celltype']] <- all_data_annotation[['seurat_clusters']]
+  
+  eval_enrich <- FALSE
+}
+
+# saveRDS(all_data_annotation, "all_data_annotation.rds")
+
+```
+
+
+```{r cluster_anno, results='asis', echo=FALSE, fig.width=12, fig.height=6, eval=eval_enrich}
+# plot
+p1 <- DimPlot(
+  object = all_data_annotation,
+  reduction = "tsne",
+  label.box = TRUE,
+  repel = TRUE,
+  pt.size = 0.5,
+  label = TRUE
+)
+
+p2 <- DimPlot(
+  object = all_data_annotation,
+  reduction = "umap",
+  label.box = TRUE,
+  repel = TRUE,
+  pt.size = 0.5,
+  label = TRUE
+)
+
+cat("#### 细胞注释降维图 {.unnumbered} \n\n")
+(p1 + p2 +
+    plot_layout(guides = "collect") &
+    theme(legend.position = "top")) %>%
+  print()
+cat("\n\n")
+
+```
+
+
+
+<!-- 细胞注释打分质量表 -->
+
+```{r annotation_table, results='asis', echo=FALSE, eval=eval_enrich}
+
+
+
+# show annotation table
+
+cat("#### 细胞注释评分 {.unnumbered} \n\n")
+
+annotate_scores %>%
+  
+    kable(format = params$tb_output) %>% 
+  
+    kable_styling("striped", full_width = T)
+
+cat("\n\n")
+
+```
+
+
+### 富集分析(by celltype)   
+
+```{r cell_marker2, include=FALSE, cache=FALSE, eval=eval_enrich}
+
+if(have_integrated){
+  # # 进行差异表达和展示之前先将SCT中的数据进行counts correct
+  # # 将所有数据集调整为同一的log_umi值进行counts corrected
+  # all_data <- all_data_a %>% PrepSCTFindMarkers()
+  
+  # integrated  data: FindConservedMarkers
+  # values: "I2A_p_val" "I2A_avg_log2FC" "I2A_pct.1" "I2A_pct.2" "I2A_p_val_adj" "max_pval" "minimump_p_val"
+  
+  if(length(params$read_all_marker) == 1 && params$read_all_marker && file.exists("all_marker2.rds")){
+    
+    all_markers2 <- readRDS("all_marker2.rds")
+    
+  }else{
+    all_markers2 <-
+      FindAllConservedMarkers(
+        all_data_annotation,
+        grouping.var = "project",
+        test.use = "wilcox",
+        logfc.threshold = 0, #0.25,
+        min.pct  = 0.1,
+        only.pos = TRUE
+      )
+    saveRDS(all_markers2, file = "all_marker2.rds")
+  }
+  
+  
+  all_markers2 <-
+    all_markers2 %>%    
+    map(rownames_to_column, "gene") %>%
+    map(rowwise) %>%
+    map(mutate, avg_log2FC = mean(c_across(ends_with("avg_log2FC")))) %>% # only.pos=TRUE，因此这里没有取绝对值
+    map(mutate, pct.1 = mean(c_across(ends_with("pct.1")))) %>% #pct.1：表达此基因的细胞比例
+    map(ungroup) %>%
+    map(function(x){
+      # 如果某一个cluster只隶属于一个样本，则不会进行p值合并
+      # 导致缺少minimump_p_val那一列
+      all_cols <- colnames(x)
+      if(!"minimump_p_val" %in% all_cols){
+        # sample1_p_val sample1_p_val_adj
+        p_col <- str_subset(all_cols, '_p_val_adj$')
+        if(length(p_col) < 1) stop("Not found column ends with _p_val_adj")
+        else if(length(p_col) > 1) warning("column ends with _p_val_adj should only have one if not found minimump_p_val.")
+        
+        x[['minimump_p_val']] <- x[[p_col]]
+      }
+      x
+    }) %>%
+    map(mutate, p.value = minimump_p_val) %>%
+    map(as.data.frame)
+
+
+
+}else{
+  # 不是intergrated则FindAllMarkders
+  # values:gene p_val avg_log2FC pct.1 pct.2 p_val_adj p.value 
+  if(length(params$read_all_marker) == 1 && params$read_all_marker && file.exists("all_marker2.rds")){
+    
+    all_markers2 <- readRDS("all_marker2.rds")
+    
+  }else{
+    all_markers2 <-
+      FindAllMarkers(
+        all_data_annotation,
+        test.use = "wilcox",
+        logfc.threshold = 0, #0.25,
+        min.pct  = 0.1,
+        only.pos = TRUE
+      ) %>%
+      group_by(cluster) %>% 
+      nest() %>%
+      deframe()
+    saveRDS(all_markers2, file = "all_marker2.rds")
+  }
+  
+  all_markers2 <-
+    all_markers2 %>%
+    map(mutate, p.value = p_val_adj) %>% 
+    map(dplyr::select, gene, everything()) %>%
+    map(as.data.frame)
+}
+
+# used for enrichment
+all_markers_forEnrichment2 <-
+  all_markers2 %>% 
+  enframe(name = "cell") %>%
+  # mutate(cluster = as.numeric(cluster)) %>%
+  unnest("value") %>%
+  group_by(cell) %>%
+  dplyr::filter(pct.1 >= 0.1) %>%
+  dplyr::filter(p.value <= 0.05) %>%
+  dplyr::filter(avg_log2FC >= 1) 
+
+
+
+```
+
+
+```{r enrichment2, include=FALSE, eval=eval_enrich}
+if(params$organism == "hsa"){
+  organism <- "human"
+  org.db <- 'org.Hs.eg.db'
+}else if(params$organism == "mmu"){
+  organism <- "mouse"
+  org.db <- 'org.Mm.eg.db'
+}else{
+}
+
+all_markers_gene2 <-
+  all_markers_forEnrichment2 %>% 
+  group_by(cell) %>%
+  nest() %>%
+  deframe() %>%
+  map("gene") %>%
+  map(function(x){
+    gene <- clusterProfiler::bitr(
+      x,
+      fromType = "SYMBOL",
+      OrgDb = org.db,
+      toType = "ENTREZID")  %>%
+    .$ENTREZID
+    gene
+  })
+
+eRPA2 <- all_markers_gene2 %>%
+  map(function(gene){
+    ReactomePA::enrichPathway(
+      gene,
+      organism = organism,
+      pvalueCutoff = 0.1
+    )
+  })
+
+
+ego2 <- 
+  all_markers_gene2 %>%
+  map(function(gene){
+    clusterProfiler::enrichGO(
+      gene,
+      OrgDb = org.db,
+      ont = "ALL",
+      pvalueCutoff = 0.1,
+      readable = FALSE,
+      pool = FALSE
+    )
+  })
+
+
+ekk2 <- 
+  all_markers_gene2 %>%
+  map(function(gene){
+    clusterProfiler::enrichKEGG(
+      gene,
+      organism = params$organism,
+      keyType = "kegg",
+      pvalueCutoff = 0.1,
+      use_internal_data = FALSE
+    )
+  })
+
+```
+
+#### GO富集分析 {.tabshow}
+
+```{r go_plot2, results='asis', fig.height=9, fig.width=15, eval=eval_enrich}
+
+all_markers2 %>%
+  names() %>%
+  walk(function(cell){
+    enrich <- ego2[[cell]]
+    
+    cat(paste0("##### ", cell, " {.unnumbered} \n\n"))
+    # 1
+    if(length(enrich) < 1 || nrow(as.data.frame(enrich)) < 1){
+      cat("<p> Not found signicant item... </p> \n\n")
+      return(NULL)
+    }
+    
+    # 2
+    p <- enrich %>% clusterProfiler::dotplot(showCategory = 10, label_format = 60, split = "ONTOLOGY")
+    p <- p + facet_wrap(~ ONTOLOGY, scales = "fixed") 
+    print(p)
+    cat("\n\n")
+    
+  })
+
+```
+
+#### KEGG富集分析 {.tabshow}
+
+```{r kegg_plot2, results='asis', fig.height=6, fig.width=8, eval=eval_enrich}
+
+all_markers2 %>%
+  names() %>%
+  walk(function(cell){
+    enrich <- ekk2[[cell]]
+    
+    cat(paste0("##### ", cell, " {.unnumbered} \n\n"))
+    # 1
+    if(length(enrich) < 1 || nrow(as.data.frame(enrich)) < 1){
+      cat("<p> Not found signicant item... </p> \n\n")
+      return(NULL)
+    }
+    
+    # 2
+    p <- enrich %>% clusterProfiler::dotplot(showCategory = 10, label_format = 80)
+    print(p)
+    cat("\n\n")
+    
+  })
+
+```
+
+#### Reactome富集分析 {.tabshow}
+
+```{r reactome_plot2, results='asis', fig.height=6, fig.width=8, eval=eval_enrich}
+
+all_markers2 %>%
+  names() %>%
+  walk(function(cell){
+    enrich <- eRPA2[[cell]]
+    
+    cat(paste0("##### ", cell, " {.unnumbered} \n\n"))
+    # 1
+    if(length(enrich) < 1 || nrow(as.data.frame(enrich)) < 1){
+      cat("<p> Not found signicant item... </p> \n\n")
+      return(NULL)
+    }
+    
+    # 2
+    p <- enrich %>% clusterProfiler::dotplot(showCategory = 10, label_format = 80)
+    print(p)
+    cat("\n\n")
+    
+  })
+
+```
+
+
+### 细胞占比分析{.tabshow}  
+
+```{r cell_proportion_total, results='asis', fig.width=8, fig.height=6}
+
+p_ls <-
+  User_columns %>%
+  set_names(., .) %>%
+  map(function(column){ # browser()
+    
+    sc_anno <-
+      all_data_annotation[[]] %>%
+      group_by(celltype, .data[[column]]) %>%
+      summarise(counts = n()) %>%
+      group_by(.data[[column]]) %>%
+      mutate(cell_proportion = counts/sum(counts))
+    
+    p_total <- sc_anno %>% 
+      ggplot(aes(x = .data[[column]], y = cell_proportion, fill = celltype)) +
+          geom_col() +
+          ggsci::scale_fill_igv() +
+          theme_bw() +
+          ggtitle("Total")
+    if(n_distinct(sc_anno[[column]]) > 1){
+      p_ls <- sc_anno %>%
+        group_by(celltype) %>%
+        nest() %>%
+        deframe() %>%
+        imap(function(cell, name){
+          cell %>%
+            ggplot(aes(x = .data[[column]], y = cell_proportion, fill = .data[[column]])) +
+            geom_col() +
+            ggsci::scale_fill_igv() +
+            theme_bw() +
+            ggtitle(name)
+        })
+    }else{
+      p_ls <- NULL
+    }
+    
+    
+    p <- c(
+      list(Total = p_total),
+      p_ls
+    )
+    
+    # return
+    p
+    
+  })
+
+
+# export image
+p_ls %>% 
+  iwalk(function(p_ls2, grp){ 
+    cat(paste0("#### ", grp, " {.unnumbered .tabshow} \n\n"))
+    
+    p_ls2 %>%
+      iwalk(function(p, name){
+        cat(paste0("##### ", name, " {.unnumbered} \n\n"))
+        print(p)
+        cat("\n\n")
+      })
+    
+    cat("\n\n")
+  })
+
+
+```
+
+
+
+### ROI细胞占比分析{.tabshow}   
+
+```{r cell_proportion_roi, results='asis', fig.width=8, fig.height=6, eval=have_rois}
+roi_props_p_ls <-
+  ROI2Cell %>% 
+  rlang::flatten() %>%
+  imap(function(roi, project){
+    User_columns %>%
+    set_names(., .) %>%
+    map(function(column){ # browser()
+      
+      sc_anno <- 
+        all_data_annotation[[]] %>% 
+        rownames_to_column("cell_id") %>%
+        dplyr::filter(cell_id %in% roi)
+        
+      
+      sc_anno2 <-
+          sc_anno %>%
+          group_by(celltype, .data[[column]]) %>%
+          summarise(counts = n()) %>%
+          group_by(.data[[column]]) %>%
+          mutate(cell_proportion = counts/sum(counts))
+      
+      p_total <- sc_anno2 %>% 
+        ggplot(aes(x = .data[[column]], y = cell_proportion, fill = celltype)) +
+            geom_col() +
+            ggsci::scale_fill_igv() +
+            theme_bw() +
+            ggtitle("Total")
+      if(n_distinct(sc_anno[[column]]) > 1){
+        p_ls <- sc_anno2 %>%
+          group_by(celltype) %>%
+          nest() %>%
+          deframe() %>%
+          imap(function(cell, name){
+            cell %>%
+              ggplot(aes(x = .data[[column]], y = cell_proportion, fill = .data[[column]])) +
+              geom_col() +
+              ggsci::scale_fill_igv() +
+              theme_bw() +
+              ggtitle(name)
+          })
+      }else{
+        p_ls <- NULL
+      }
+
+      p <- c(
+        list(Total = p_total),
+        p_ls
+      )
+      
+      # return
+      p
+    })
+  })
+
+
+# export image
+roi_props_p_ls %>% 
+  iwalk(function(p_ls, ROI_name){
+    cat(paste0("#### ", ROI_name, " {.unnumbered .tabshow} \n\n"))
+    
+    p_ls %>%
+      iwalk(function(p_ls2, grp){
+        cat(paste0("##### ", grp, " {.unnumbered .tabshow} \n\n"))
+        
+        p_ls2 %>% iwalk(function(p, name){
+          cat(paste0("###### ", name, " {.unnumbered} \n\n"))
+          print(p)
+          cat("\n\n")
+        })
+        
+        cat("\n\n")
+      })
+    
+    cat("\n\n")
+  })
+
+
+```
+
+
+<!-- roi annotation -->
+```{r cell_proportion_roi2, results='asis', fig.width=8, fig.height=6, eval=have_rois}
+all_roi_cells <-
+  ROI2Cell %>%
+  map(enframe, name = "ID", value = "cell_id") %>%
+  bind_rows() %>%
+  unnest(cell_id)
+
+roi_p_ls <-
+  ROI_User_columns %>%
+  set_names(., .) %>%
+  map(function(column){ # browser()
+    
+    sc_anno <-
+      all_data_annotation[['celltype']] %>%
+      rownames_to_column("cell_id") %>%
+      # 只保留再ROI中的那些细胞
+      # 不过由于QC，ROI中的一些细胞也已经不存在了
+      # 因此使用inner_join
+      inner_join(all_roi_cells, by = "cell_id") %>% 
+      
+      inner_join(ROI_annotation, by = "ID") %>% # <---------------- change right_join to inner_join -----------------
+      
+      group_by(celltype, .data[[column]]) %>%
+      summarise(counts = n()) %>%
+      group_by(.data[[column]]) %>%
+      mutate(cell_proportion = counts/sum(counts))
+    
+    all_grps <- unique(sc_anno[[column]])
+    
+    p_total <- sc_anno %>% 
+      ggplot(aes(x = .data[[column]], y = cell_proportion, fill = celltype)) +
+          geom_col() +
+          ggsci::scale_fill_igv() +
+          theme_bw() +
+          ggtitle("Total")
+    
+    if(n_distinct(sc_anno[[column]]) > 1){
+      p_ls <- sc_anno %>%
+        group_by(celltype) %>%
+        nest() %>%
+        deframe() %>%
+        imap(function(cell, name){ # browser()
+          cell %>% 
+            dplyr::select(all_of(c(column, "counts", "cell_proportion"))) %>% {
+              # axis x is `.data[[column]]`
+              # but some grp may not exist
+              # add missing grps to axis x
+              current_grps <- unique(.[[column]])
+              missing_grps <- all_grps %>% setdiff(current_grps)
+              for( i in missing_grps){
+                . <- bind_rows(., structure(
+                  list(i, 0, 0),
+                  names = c(column, "counts", "cell_proportion"),
+                  row.names = 1L,
+                  class = "data.frame"
+                ))
+              }
+              # print(.)
+              .
+            } %>%
+            ggplot(aes(x = .data[[column]], y = cell_proportion, fill = .data[[column]])) +
+            geom_col() +
+            ggsci::scale_fill_igv() +
+            theme_bw() +
+            ggtitle(name)
+        })
+      
+    }else{
+      p_ls <- NULL
+    }
+    
+    
+    p <- c(
+      list(Total = p_total),
+      p_ls
+    )
+    
+    # return
+    p
+  })
+
+
+# export image
+roi_p_ls %>% 
+  iwalk(function(p_s, grp){
+    cat(paste0("#### ", grp, " {.unnumbered .tabshow} \n\n"))
+    
+    p_s %>%
+      iwalk(function(p, name){
+        cat(paste0("##### ", name, " {.unnumbered} \n\n"))
+        print(p)
+        cat("\n\n")
+      })
+    
+    cat("\n\n")
+  })
+
+```
+
+
+### 全景原位图  
+
+```{r spatial_plot,  results='asis', echo = FALSE, fig.height=12, fig.width=20}
+
+
+all_data_meta <-
+  all_data_annotation[[]] %>%
+  rownames_to_column("cell_id")
+  # #TODO: Why Seurat add project names before the cell_id?
+  # IntegratedData有问题
+  # mutate(cell_id2 = cell_id) %>%
+  # mutate(cell_id = str_remove(cell_id, "^.*?_"))
+
+
+sp_p_ls <-
+  cells_boundary_ls %>%
+  imap(function(cells_boundary, project){ # browser()
+    image_wh_r <- image_wh_r_ls[[project]]
+    
+    dat <-
+      cells_boundary %>%
+      right_join(all_data_meta, by = "cell_id")
+    
+    p <- dat %>%
+      ggplot(aes(x = vertex_x, y = vertex_y)) +
+      geom_polygon(aes(fill = celltype, group = cell_id))  +
+      scale_y_reverse() +
+      coord_fixed(ratio = 1/image_wh_r) +
+      ggsci::scale_fill_igv() +
+      theme_void()
+    p
+  })
+  
+
+# export image
+sp_p_ls %>% 
+  iwalk(function(p, grp){
+    cat(paste0("#### ", grp, " {.unnumbered .tabshow} \n\n"))
+    print(p)
+    cat("\n\n")
+  })
+```
+
+
+### ROI原位图  
+
+```{r roi_spatial_withROI, results='asis', echo = FALSE, fig.height=12, fig.width=20, eval=have_rois}
+
+sp_p_withROI_ls <-
+  cells_boundary_ls %>%
+  imap(function(cells_boundary, project){
+    
+    image_wh_r  <- image_wh_r_ls[[project]]
+    
+    roi_position <- ROI_ls[[project]] # Selection/ID
+    
+    roi_position_label <- 
+      roi_position %>%
+      group_by(Selection) %>%
+      summarise(X = mean(X), Y = mean(Y))
+    
+    dat <-
+      cells_boundary %>%
+      right_join(all_data_meta, by = "cell_id")
+    
+    p <- dat %>%
+      ggplot(aes(x = vertex_x, y = vertex_y)) +
+      geom_polygon(aes(fill = celltype, group = cell_id))  + # 各个细胞
+      geom_polygon( # ROI边框
+        data = roi_position,
+        aes(x = X, y = Y, group = Selection),
+        show.legend = FALSE,
+        color="black",
+        fill = NA,
+        size = 1
+      ) +
+      ggrepel::geom_label_repel(
+        data = roi_position_label,
+        aes(x = X, y = Y, label = Selection)
+      ) + # ROI label
+      scale_y_reverse() +
+      coord_fixed(ratio = 1/image_wh_r) +
+      ggsci::scale_fill_igv() +
+      theme_void()
+    p
+  })
+
+
+# export image
+sp_p_withROI_ls %>% 
+  iwalk(function(p, grp){
+    cat(paste0("#### ", grp, " {.unnumbered .tabshow} \n\n"))
+    print(p)
+    cat("\n\n")
+  })
+
+```
+
+```{r roi_spatial_plot, results='asis', echo = FALSE, fig.height=8, fig.width=6, eval=have_rois}
+
+sp_roi_p_ls <-
+  ROI2Cell %>%
+  imap(function(roi_ls, project){
+    dat_ls <-
+      roi_ls %>%
+      map(function(x){
+        all_data_meta[all_data_meta$cell_id %in% x, ,drop=FALSE]
+      })
+    
+    p_ls <-
+      dat_ls %>%
+      imap(function(dat, ID){ # browser()
+        
+        cells_boundary <- cells_boundary_ls[[project]]
+        dat <-
+          cells_boundary %>%
+          right_join(dat, by = "cell_id")
+        
+        image_wh_r <- diff(range(dat$vertex_x))/diff(range(dat$vertex_y))
+        
+        p <- dat %>%
+          ggplot(aes(x = vertex_x, y = vertex_y)) +
+          geom_polygon(aes(fill = celltype, group = cell_id))  +
+          scale_y_reverse() +
+          coord_fixed(ratio = 1/image_wh_r) +
+          ggsci::scale_fill_igv() +
+          theme_void()
+        p
+      })
+  })
+
+# export image
+sp_roi_p_ls %>% 
+  iwalk(function(p_ls, grp){ 
+    cat(paste0("#### ", grp, " {.unnumbered .tabshow} \n\n"))
+    
+    p_ls %>%
+      iwalk(function(p, name){
+        cat(paste0("##### ", name, " {.unnumbered} \n\n"))
+        print(p)
+        cat("\n\n")
+      })
+    
+    cat("\n\n")
+  })
+```
+
+
+### 细胞社区分析  
+
+```{r cn, include=FALSE}
+k.nn      <- 50 # 多少个最近邻细胞
+k.cluster <- 10 # 多少个CN cluster
+
+
+all_celltypes <- all_data_annotation$celltype %>% unique() %>% as.character()
+
+# construct NN per slide
+cn_nn_cellfreq_ls <-
+  cells_position_ls %>%
+  imap(function(x, y){ # browser()
+    dat <- 
+      all_data_meta[c("cell_id", "celltype")] %>%
+      # all_data是剔除了部分QC不合格细胞的
+      # x是只有一个切片的数据的，因此使用的inner_join
+      inner_join(x[c("cell_id", "x_centroid", "y_centroid")], by = "cell_id")
+    
+    cn_nn <- RANN::nn2(dat[c('x_centroid', 'y_centroid')], k = k.nn)
+    cn_nn_index2cell <- as.character(dat$celltype)[cn_nn$nn.idx]
+    
+    dim(cn_nn_index2cell)      <- dim(cn_nn$nn.idx)
+    rownames(cn_nn_index2cell) <- dat$cell_id
+    
+    # get cell frequency table
+    # add all celltypes, make sure all cell exist in every neighborhood
+    cn_all_celltypes <- matrix(
+      all_celltypes, 
+      nrow = nrow(cn_nn_index2cell), 
+      ncol = length(all_celltypes), 
+      byrow = TRUE
+    )
+    cn_nn_cell2 <- cbind(cn_nn_index2cell, cn_all_celltypes)
+    
+    # all cell have been added 1, so minus 1
+    # table will sort the celltype, so all celltype have identical order 
+    cn_nn_cellcount <- apply(cn_nn_cell2, 1, table) - 1 
+    cn_nn_cellfreq  <- sweep(cn_nn_cellcount, 2, FUN = "/", colSums(cn_nn_cellcount))
+    
+    cn_nn_cellfreq
+  })
+
+# cn_nn_cellfreq
+# row: CellType; column: cell_id
+cn_nn_cellfreq <- do.call(cbind, cn_nn_cellfreq_ls)
+
+# construct CN by all slide
+
+# cn_cluster_ls <- map(2:20, ~ kmeans(t(cn_nn_cellfreq), centers = .x, iter.max = 1000))
+# cn_cluster_vrc <- map(cn_cluster_ls, ~ fpc::calinhara(t(cn_nn_cellfreq), .x$cluster)) # compute 方差比
+
+# plot(
+#   x = 2:20, 
+#   y = unlist(cn_cluster_vrc), 
+#   ylab = "Calinski-Harabasz index", 
+#   xlab = "Number of Clusters"
+# )
+
+# cluster_number <- 6
+cn_cluster   <- kmeans(t(cn_nn_cellfreq), centers = k.cluster, iter.max = 1000)
+cn_meta_data <- 
+  cn_cluster$cluster %>% 
+  enframe("cell_id", "CN") %>% 
+  column_to_rownames("cell_id") %>%
+  mutate(CN = str_c("CN", CN)) %>%
+  mutate(CN = factor(CN, levels = str_c("CN", sort(unique(cn_cluster$cluster)))))
+
+all_data_cn <-
+  all_data_annotation 
+  # # TODO: Why Seurat add project names before the cell_id?
+  # RenameCells(., new.names = colnames(.) %>% str_remove("^.*?_")) %>%
+  # AddMetaData(metadata = cn_meta_data)
+
+```
+
+
+```{r cn_heat, results='asis', echo=FALSE, fig.width=12, fig.height=6}
+# FoldChange cluster/allCell
+cn_cluster_mean <- cn_cluster$centers
+cn_baseMean     <- rowMeans(cn_nn_cellfreq)
+
+# log2(FC)
+cn_cluster_FC <- log2(1 + sweep(cn_cluster_mean, MARGIN = 2, FUN = "/", STATS = cn_baseMean))
+
+# heatmap
+p_cn_heat <-
+  pheatmap::pheatmap(
+    cn_cluster_FC,
+    color = colorRampPalette(c("navy", "white", "firebrick3"))(50),
+    border_color = NA,
+    treeheight_row = 0,
+    labels_row = str_c("CN", rownames(cn_cluster_FC), sep = "_"),
+    cluster_rows = T,
+    scale = "column",
+    silent = TRUE
+  )
+
+# export
+cat(paste0("#### CellNeighborhood CN celltype heatmap {.unnumbered .tabshow} \n\n"))
+grid::grid.newpage()
+print(p_cn_heat)
+cat("\n\n")
+
+```
+
+
+<!-- 细胞社区原位空间图 -->
+```{r cn_spatial, results='asis', echo=FALSE, fig.height=12, fig.width=20 }
+all_data_meta_cn <-
+  all_data_cn[[]]  %>%
+  rownames_to_column("cell_id") 
+
+cn_sp_p_ls <-
+  cells_boundary_ls %>%
+  imap(function(cells_boundary, project){ # browser()
+    image_wh_r <- image_wh_r_ls[[project]]
+    
+    dat <-
+      cells_boundary %>%
+      right_join(all_data_meta_cn, by = "cell_id")
+    
+    p <- dat %>%
+      ggplot(aes(x = vertex_x, y = vertex_y)) +
+      geom_polygon(aes(fill = CN, group = cell_id))  +
+      scale_y_reverse() +
+      coord_fixed(ratio = 1/image_wh_r) +
+      ggsci::scale_fill_igv() +
+      theme_void()
+    p
+  })
+  
+
+# export image
+cn_sp_p_ls %>% 
+  iwalk(function(p, grp){
+    cat(paste0("#### ", grp, " {.unnumbered .tabshow} \n\n"))
+    print(p)
+    cat("\n\n")
+  })
+```
+
+```{r,include=FALSE}
+gc()
+gc()
+
+```
+
+# 关于非因
+
+```{r,include=FALSE, eval=FALSE}
+if(!file.exists("export_dat")) dir.create("export_dat")
+c(
+  "all_data",
+  "all_data_annotation",
+  "all_data_ls",
+  "all_data_ls_pass",
+  "all_markers",
+  "all_markers_final",
+  "all_data_cn"
+) %>%
+  walk(
+    function(x){
+      obj <- get(x, envir = .GlobalEnv)
+      saveRDS(obj, file = paste0("export_dat/", x, ".rds"))
+    }
+  )
+
+
+# c(
+#   "all_data",
+#   "all_data_annotation",
+#   "all_data_ls",
+#   "all_data_ls_pass",
+#   "all_markers",
+#   "all_markers_final"
+# ) %>% 
+#   walk(function(x){
+#     f <- paste0("export_dat/", x, ".rds")
+#     assign(x, readRDS(paste0("export_dat/", x, ".rds")), envir = .GlobalEnv)
+#   })
+```
+
+  非因生物是以新型癌症蛋白组学和空间多组学为核心技术的、以癌症精准医学研究，转化医学与临床服务为核心业务的创新型生物技术公司。
+
+  非因生物传承MD安德森癌症中心的价值和理念，建设了以癌症精准医疗领域国际先驱
+Gordon B. Mills 博士命名的Mills癌症个体化诊疗研究中心 (Mills Institute
+for Personalized Cancer Care,
+MIPCC)，以多种新型蛋白组学和空间多组学技术为核心，在癌症的基础研究、转化医学、临床研究、药物开发、临床诊疗等各方面开展自主及合作研究，并提供全方位高水准的科研及临床服务。
+
+  非因生物拥有多项全国唯一、全球领先的核心技术平台，包括RPPA（Reverse
+Phase Protein Array）反相蛋白微阵列技术，DSP（Digital Spatial
+Profiler）数字空间多组学分析技术，单细胞空间组学技术，以及超高灵敏度PWG（Planar
+Wave Guide）微阵列检测技术。
+
+  非因生物以技术为本，致力于打造中国最前沿的新型蛋白组学和空间多组学高端技术平台，为广大科研工作者提供最优质的新型多组学技术服务，推动癌症转化医学研究和个体化诊疗。
+
+::: original-footer
+
+------------------------------------------------------------------------
+
+```{r logo2, out.width='50%', fig.align="left"}
+knitr::include_graphics("figure/logo.png")
+```
+
+公司地址：\
+Mills 癌症个体化诊疗研究中心（ Mills Institute for Personalized Cancer
+Care MIPCC）\
+山东省济南市高新区港兴三路侨梦苑 2 号楼 22 层\
+<http://www.fynnbio.com>
+
+------------------------------------------------------------------------
+:::
+
+<!-- 目录内容调整 -->
+
+```{js, echo=FALSE}
+var clock;
+$(function(){
+  clock = setTimeout(() => {
+    $('#TOC').prepend('<p style="font-size:1.6rem;">目录</p>')
+    clearTimeout(clock);
+  }, 1)
+})
+
+```
+
+<!-- 一级标题添加装饰线 -->
+
+```{js, echo=FALSE}
+$(function(){
+  <!-- 一级标题下面加两条装饰线 -->
+  $(".section h1").after("<hr class=thin>");
+  $(".section h1").after("<hr class=bold>");
+  
+  <!-- 一级标题上面加页眉标注 -->
+  var sectionLink = $('<a>'), 
+      sectionLogo = $('<a>')
+      sectionImg = $('<img>');
+      
+  sectionLink.attr('href', 'http://www.fynnbio.com/')
+             .attr('target', '_blank')
+             .attr('title', '访问公司官网')
+             .text('非因生物科技（山东）有限公司  www.fynnbio.com')
+        
+  sectionLogo.attr('href', '#')
+             .attr('title', '返回首页')
+             
+  // 图片的src从logo图片中获取，base64
+  var src=$('.original-logo img').attr('src')
+  sectionImg.attr('src', src) //figures/logo.png
+            .attr('alt', "FynnBio logo")
+            .attr('width', '115')
+            .attr('height', '100')
+            .appendTo(sectionLogo)
+          
+  var sectionHeader = $('<p>');
+  sectionHeader.addClass("section-header")
+               .append(sectionLogo)
+               .append(sectionLink)
+  
+  $(".section h1").before(sectionHeader)
+  $(".section-header").after('<br>')
+  $(".section-header").after('<hr>')
+  
+            
+})
+```
+
+<!-- 首页格式调整 -->
+
+```{js, echo=FALSE}
+ <!-- 取消默认首页文字 -->
+ var headerDate = $('#header>.date');
+     headerDate.siblings().hide();
+     
+ <!-- 隐藏默认的logo图片 -->
+ $('.original-logo').hide()
+ $('.original-footer').hide()
+ 
+ <!-- 创建新的首页内容 -->
+  var header = $('<div>').addClass('header');
+  var headerFirst, headerSecond;
+  headerFirst = $('<div>').addClass('title-first')
+                          .append('<p>非因生物</p>')
+                          .append('<p>Mills 癌症个体化诊疗研究中心</p>')
+                          .append('<p>Mills Institute for Personalized Cancer Care</p>');
+  headerSecond = $('<div>').addClass('title-second')
+                          .append('<p>MIPCC-Xenium <span style = "color:white;">单细胞空间原位转录组学</span>分析报告</p>')
+                          .append('<p>Mills Institute for Personalized Cancer Care (MIPCC)</p>')
+                          .append('<p>&#9635;&nbsp;&nbsp;非因生物 专注癌症精准医疗 / 全球领先的蛋白组学·空间多组学技术平台</p>')  ;
+  header.append(headerFirst)
+        .append(headerSecond);
+
+
+  <!-- 将header date嵌入DOM -->
+  $('#header').append(header)
+              .append(headerDate);
+              
+  <!-- 添加两列竖排说明文字 -->
+  vertical = $('<div>').addClass('vertical-column')
+                       .html('非因生物科技︵ 山东 ︶有限公司<br>Fynn Biotechnologies Ltd.');
+  $(headerDate).before(vertical);
+  
+```
+
+<!-- 折叠布局，tabshow控制 兼容ie-->
+
+```{js, echo = FALSE}
+$(function(){
+
+  // 所有需要折叠子元素的div，class有tabshow
+  var tabs = $('.tabshow');
+  
+  for(var i =0; i < tabs.length; i++){
+    var tablist,  // 需要折叠的子元素div
+        id_list,  // 折叠div的id
+        text_list; // 折叠div的text，用于select的option中显示
+    
+    tablist = tabs.eq(i).children('.section');
+    if(tablist.length < 2) {continue;}
+    
+    id_list = tablist.map(function(){ return '#' + $(this).attr('id') }).get().map(x => x.replace('.', "\\.") );
+    text_list = tablist.map(function(){ return $(this).children(':not("div")').eq(0).hide().text() });
+    text_list = text_list.map(function(){ return this.replace(/^[0-9]+(\.[0-9]+)*\s{1}/g, '') }).get();
+    
+    // 构造select元素
+    var select = $('<select>').attr('id', 'tab-select' + i);
+    for(var j=0; j < id_list.length; j++){
+      var op = $('<option>').attr('value', id_list[j]).text(text_list[j]);
+      if(j === 0){
+        op = op.attr('selected', 'selected');
+      }
+      select.append(op);
+    }
+    
+    // select使用一个div包裹
+    select = $('<div>').append(select);
+    // 如果有clear类属性，则将select的父div加上clear属性
+    var className = tablist.eq(0).attr('class');
+    if(/clear/.test(className)){
+      select.addClass('tabclear')
+    }
+    // 将select嵌入DOM中
+    tablist.eq(0).before(select);
+    
+    // 初始化，默认显示第一个子元素div，其他隐藏
+    $(id_list[0]).show().siblings('.section').hide();
+    
+    // 绑定select的change事件，动态改变div的显隐
+    $('#'+'tab-select' + i).change(function(){
+      var val = $(this).val();
+      $(val).show().siblings('.section').hide();
+    })
+  }
+
+})
+
+
+```
+
+<!-- 自定义tabset（默认tabset无法作用于h6之后的标题） 兼容ie-->
+
+```{js, echo = FALSE}
+$(function(){
+
+  // 所有需要折叠子元素的div，class有tabset-diy
+  var tabs = $('.tabset-diy');
+  
+  for(var i = 0; i < tabs.length; i++){
+    var tablist,  // 需要折叠的子元素div
+        id_list,  // 折叠div的id
+        text_list; // 折叠div的text，用于select的option中显示
+    
+    tablist = tabs.eq(i).children('.section');
+    if(tablist.length < 2) {continue;}
+    
+    id_list = tablist.map(function() { return '#' + $(this).attr('id') }).get();.map(x => x.replace('.', "\\.") )
+    text_list = tablist.map(function(){ return $(this).children().eq(0).hide().text(); });
+    text_list = text_list.map(function(){ return this.replace(/^[0-9]+(\.[0-9]+)*\s{1}/g, '') }).get();
+    
+    // 构造ul元素
+    var ul = $('<ul>').attr('id', 'tab-ul' + i).addClass('tab-ul');
+    for(var j=0; j < id_list.length; j++){
+      var li = $('<li>').addClass('tab-li')
+                        .attr('data-item', id_list[j])
+                        .text(text_list[j]);
+      if(j === 0){
+        li = li.addClass('active');
+      }
+      ul.append(li);
+    }
+    
+    // 将select嵌入DOM中
+    tablist.eq(0).before(ul);
+    
+    // 初始化，默认显示第一个子元素div，其他隐藏
+    $(id_list[0]).show().siblings('.section').hide();
+    
+    // 绑定ul的li的click事件，动态改变div的显隐
+    $('#'+'tab-ul' + i + ' > li').click(function(){
+      // li的active class改变
+      $(this).addClass('active').siblings().removeClass('active')
+      // li对应的div的显隐
+      var item = $(this).attr('data-item');
+      $(item).show().siblings('.section').hide();
+    })
+  }
+
+})
+
+
+```

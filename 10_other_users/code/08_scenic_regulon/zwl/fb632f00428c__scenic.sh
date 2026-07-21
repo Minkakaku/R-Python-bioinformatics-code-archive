@@ -1,0 +1,5 @@
+#conda activate /mnt/NexData_file/share/scRNA-tools/envs/pip_SCENICR/
+python /mnt/NexData_file/home/zwl/Project/personal/demo/SCENIC/new_code/scenic.py   --adata_path /mnt/NexData_file/home/zwl/Project/FWSC20251318/pySCENIC/Tcell_Pre.h5ad   --output_dir /mnt/NexData_file/home/zwl/Project/FWSC20251318/pySCENIC/CD8Tcell_Pre   --species human
+python /mnt/NexData_file/home/zwl/Project/personal/demo/SCENIC/new_code/scenic.py   --adata_path /mnt/NexData_file/home/zwl/Project/FWSC20251318/pySCENIC/Tcell_Post.h5ad   --output_dir /mnt/NexData_file/home/zwl/Project/FWSC20251318/pySCENIC/CD8Tcell_Post   --species human
+python /mnt/NexData_file/home/zwl/Project/personal/demo/SCENIC/new_code/scenic.py   --adata_path /mnt/NexData_file/home/zwl/Project/FWSC20251318/pySCENIC/Myeloid_Pre.h5ad   --output_dir /mnt/NexData_file/home/zwl/Project/FWSC20251318/pySCENIC/Myeloid_Pre   --species human
+python /mnt/NexData_file/home/zwl/Project/personal/demo/SCENIC/new_code/scenic.py   --adata_path /mnt/NexData_file/home/zwl/Project/FWSC20251318/pySCENIC/Myeloid_Post.h5ad   --output_dir /mnt/NexData_file/home/zwl/Project/FWSC20251318/pySCENIC/Myeloid_Post   --species human

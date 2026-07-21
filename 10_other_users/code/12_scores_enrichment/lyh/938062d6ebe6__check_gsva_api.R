@@ -1,0 +1,8 @@
+suppressPackageStartupMessages(library(GSVA))
+cat("GSVA version:", as.character(utils::packageVersion("GSVA")), "\n")
+cat("gsva args:\n")
+print(args(gsva))
+cat("ssgseaParam args:\n")
+print(args(ssgseaParam))
+cat("gsvaParam args:\n")
+print(args(gsvaParam))

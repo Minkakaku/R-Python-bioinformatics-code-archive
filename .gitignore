@@ -1,0 +1,35 @@
+# This repository is a code-only archive. Ignore everything by default,
+# then allow source code, documentation, configuration, and provenance files.
+*
+!*/
+
+!.gitignore
+!.gitattributes
+!*.R
+!*.r
+!*.Rmd
+!*.rmd
+!*.py
+!*.sh
+!*.md
+!*.yml
+!*.yaml
+!*.toml
+!*.json
+!Dockerfile
+!Makefile
+!requirements*.txt
+
+# Provenance and integrity records generated during code collection.
+!CHECKSUMS.sha256
+!manifest.tsv
+!10_other_users/*.tsv
+!10_other_users/CHECKSUMS.sha256
+
+# Database payloads and generated/runtime artifacts are not source code.
+/Database/**/*.json
+/Database/**/*.md
+*.ipynb
+*.pyc
+*.Rhistory
+__pycache__/

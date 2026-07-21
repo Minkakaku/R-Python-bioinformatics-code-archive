@@ -1,0 +1,2 @@
+singularity exec --bind /home/   /mnt/sif/my_sandbox/   /usr/local/omicverse_proj/.venv/bin/python3  /home/lyh/Script/run_cellphonedb.py -i "/home/lyh/sc_RNA_seq/Tongji/01_scRNAseq_merged.h5ad"
+-o "/home/lyh/sc_RNA_seq/Tongji/cellphonedb"  -c "sub2" 

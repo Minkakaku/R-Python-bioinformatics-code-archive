@@ -1,0 +1,103 @@
+### 4.2 ASVs分析
+
+&emsp;&emsp;ASVs<sup>[9]</sup>（Amplicon Sequence Variants，扩增子序列变异体）表示真实存在的生物学序列，可以在单核苷酸的精度上区分序列之间的差异，能够实现样本中真实的物种甚至菌株水平物种的鉴定。
+
+&emsp;&emsp;使用QIIME2软件中的DADA2方法对序列进行去噪获得ASVs。下表及下图显示了通过聚类得到的各个样本ASVs个数的分布情况：
+
+<center>**表4.2-1 各个样本ASVs数量统计表**</center>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+reads_qc_stats_df <- read.table(
+  params$all_ASVs_count_stats,
+  header = T,
+  row.names = NULL,
+  na.strings = c("NA"),
+  sep = "\t",
+  comment.char = "#",
+  check.names = F
+)
+
+js <- c(
+  "function(thead, data, start, end, display) {",
+  "  $('th', thead).css({'background-color': '#377EB8', 'color': 'white'});",
+  "}"
+)
+
+datatable(
+  reads_qc_stats_df,
+  class = "hover cell-border order-column stripe",
+  rownames = FALSE,
+  extensions = c("Scroller", "FixedColumns", "Buttons"),
+  colnames = c("Sample ID", "ASVs Count", "Seqs Count"),
+  option = list(
+    fixedColumns = list(leftColumns = 1),
+    scrollX = TRUE,
+    pageLength = 5,
+    dom = 'Blfrtip',
+    buttons = c('copy', 'excel', 'print'),
+    columnDefs = list(list(className = 'dt-center', targets = "_all")),
+    headerCallback = JS(js)
+  )
+)
+```
+
+<center>**说明** **Sample ID**：样本名称；**ASVs Count**：ASVs数量；**Seqs Count**：ASV对应的reads数。</center>
+
+<center>&nbsp;</center>
+
+####  {- .toc-ignore .tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$ASVs_count_barplot_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+for (contrast in sort_contrast_list) {
+  pic <- file.path(params$ASVs_count_barplot_dir, contrast, glue("{contrast}.ASVs_count.barplot.png"))
+  cat("##### ", contrast, " \n")
+  cat("\n")
+  cat("![](", pic, "){width=60%}", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**图4.2-1 各个样本ASVs数量分布直方图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** 横坐标为样本名称，纵坐标为ASV数量。</center>", "\n")
+  cat("<center>&nbsp;<center>", "\n")
+  cat("\n")
+}
+
+```
+#### {- .toc-ignore}
+
+&emsp;&emsp;利用Venn图可以展示不同比较组之间共有、特有的ASVs数目，直观地表现出分组间ASVs的重合情况。结合ASVs所代表的物种，可以找出不同环境中的共有微生物。根据不同分组绘制的各比较组Venn如下图所示：
+
+####  {- .toc-ignore .tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$ASVs_count_venn_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+for (contrast in sort_contrast_list) {
+  pic <- file.path(params$ASVs_count_venn_dir, contrast, glue("{contrast}.ASVs_count.venn.png"))
+  cat("##### ", contrast, " \n")
+  cat("\n")
+  cat("![](", pic, "){width=50%}", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**图4.2-2 各个比较组ASVs数量Venn图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** 不同分组用不同颜色表示，不同颜色图形之间交叠部分数字为两个分组之间共有的ASVs数量，非重叠部分是样本/分组特有的ASVs数量。</center>", "\n")
+  cat("<center>&nbsp;<center>", "\n")
+  cat("\n")
+}
+
+```
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- ASVs序列FASTA文件：results/02.ASVs_analysis/ASVs_sequence.fasta；
+- 各个样本所有ASVs计数表：results/02.ASVs_analysis/all_ASVs_count.xls；
+- 各个样本数据抽平后的所有ASVs计数表：results/02.ASVs_analysis/all_ASVs_count_rarefy.xls；
+- 各个样本ASVs数量统计表：results/01.data_clean/all_reads_qc_stats.xls；
+- 各个样本ASVs数量分布直方图和数据表格：results/02.ASVs_analysis/ASVs_count_barplot/\*/\*.ASVs_count.barplot.{pdf,png,xls}；
+- 各个比较组ASVs数量比较韦恩图和数据表格：results/02.ASVs_analysis/ASVs_count_venn/\*/\*.ASVs_count.venn.{pdf,png,xls}。

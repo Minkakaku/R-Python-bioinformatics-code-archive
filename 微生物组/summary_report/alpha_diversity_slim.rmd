@@ -1,0 +1,118 @@
+### 4.4 Alpha多样性分析
+
+&emsp;&emsp;Alpha多样性<sup>[12]</sup>（Alpha diversity）反映的是单个样本物种丰富度（Richness）及物种多样性（Diversity），有多种衡量指标：Chao1、ACE、Shannon、Simpson、Good's Coverage和Faith's PD等。Chao1和ACE指数衡量物种丰富度即物种数量的多少。Shannon和Simpson指数用于衡量物种多样性，受样品群落中物种丰富度和物种均匀度（Community evenness）的影响。相同物种丰富度的情况下，群落中各物种具有越大的均匀度，则认为群落具有越大的多样性，Shannon指数和Simpson指数值越大，说明样品的物种多样性越高。另外还统计了覆盖率（Good's Coverage），其数值越高，则样本中物种被测出的概率越高，而没有被测出的概率越低。该指数反映本次测序结果是否代表了样本中微生物的真实情况，Faith's PD指数是基于系统发育树来计算的一种多样性指数，它用各个样品中ASVs特征代表序列构建出系统发育树的距离，将某一个样品中的所有代表序列的枝长加和，从而得到的数值。数值越大，群落多样性越高。
+
+&nbsp;
+
+#### 4.4.1 Alpha多样性指数统计
+
+&emsp;&emsp;使用QIIME2软件，对样本的Alpha多样性指数进行评估。各样本Alpha多样性指数值统计如下表所示：
+
+<center>**表4.4.1-1 Alpha多样性指数统计表**</center>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+alpha_stats_df <- read.table(
+  params$alpha_stats,
+  header = T,
+  row.names = NULL,
+  na.strings = c("NA"),
+  sep = "\t",
+  comment.char = "#",
+  check.names = F
+)
+
+js <- c(
+  "function(thead, data, start, end, display) {",
+  "  $('th', thead).css({'background-color': '#377EB8', 'color': 'white'});",
+  "}"
+)
+
+datatable(
+  alpha_stats_df,
+  class = "hover cell-border order-column stripe",
+  rownames = FALSE,
+  extensions = c("Scroller", "FixedColumns", "Buttons"),
+  colnames = c("Sample ID", "Feature", "ACE", "Chao1", "Simpson", "Shannon", "Good's Coverage", "Faith's PD"),
+  option = list(
+    fixedColumns = list(leftColumns = 1),
+    scrollX = TRUE,
+    pageLength = 5,
+    dom = 'Blfrtip',
+    buttons = c('copy', 'excel', 'print'),
+    columnDefs = list(list(className = 'dt-center', targets = "_all")),
+    headerCallback = JS(js)
+  )
+)
+```
+
+<center>**说明** **Sample ID**：样本名称；**Feature**：特征ASVs的个数；**ACE**：ACE指数（Abundance-based Coverage Estimator）基于丰度的覆盖估计值，是用来估计群落中含有物种数目的指数；**Chao1**：Chao1指数，是物种数目丰富度的衡量标准之一；**Simpson**：辛普森指数（Simpson index），用来估算样品中微生物的多样性指数之一; **Shannon**：香农指数（Shannon-Wiener index），用来估算样品中微生物的多样性指数之一；**Good's Coverage**：数值越高，则样本中物种被测出的概率越高，而没有被测出的概率越低；**Faith's PD**：基于系统发育树计算的多样性指数, 数值越大,群落多样性越高。</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;**结果文件：**
+
+- 所有样本的Alpha多样性指数统计表：results/04.alpha_diversity/all.alpha_index.xls。
+
+&nbsp;
+
+#### 4.4.2 ASVs特征数稀释性曲线 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;稀释性曲线<sup>[13]</sup>（Rarefaction curve）从样本中随机抽取一定数量的序列，统计这些序列所代表的物种数目，并以序列数与物种数来构建曲线，用于验证测序数据量是否足以反映样品中的物种多样性，并间接反映样品中物种的丰富程度。下图反映了持续抽样下新ASVs特征（新物种）出现的速率：在一定范围内，随着测序条数的加大，若曲线表现为急剧上升则表示群落中有大量物种被发现；当曲线趋于平缓，则表示此环境中的物种并不会随测序数量的增加而显著增多。稀释曲线可以作为对各样本测序量是否充分的判断,曲线急剧上升表明测序量不足，需要增加序列条数；反之，则表明样品序列充分，可以进行数据分析。
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$alpha_feature_curve_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+for (contrast in sort_contrast_list) {
+  pic <- file.path(params$alpha_feature_curve_dir, contrast, glue("{contrast}.observed_features.rarefaction_curve.png"))
+  cat("##### ", contrast, " \n")
+  cat("\n")
+  cat("![](", pic, "){width=60%}", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**图4.4.2-1 ASVs特征数稀释性曲线图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** 横坐标为随机抽取的测序条数，纵坐标为基于该测序条数得到的ASVs特征数量,每条曲线代表一个样本，用不同颜色标记。</center>", "\n")
+  cat("<center>&nbsp;<center>", "\n")
+  cat("\n")
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- ASVs特征数稀释性曲线图和数据表格：results/04.alpha_diversity/alpha_rarefaction_curve/observed_features/\*.\*.observed_features.rarefaction_curve.{pdf,png,xls}。
+
+&nbsp;
+
+#### 4.4.3 Shannon多样性指数稀释性曲线 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;根据各样本的测序量在不同测序深度时的Shannon指数（反映样品中微生物多样性的指数）绘制Shannon多样性指数稀释曲线，以此反映各样本在不同测序数量时的微生物多样性。Shannon指数越大则物种种类越多，物种越丰富，表明样品中已涵盖绝大多数的微生物物种信息。当曲线趋向平坦时，说明测序数据量足够大，特征种类不会在随测序量增加而增长；如果曲线没有趋于平坦，则表明不饱和，增加数据量可以发现更多特征。Shannon多样性指数稀释性曲线如下图所示：
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$alpha_shannon_curve_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+for (contrast in sort_contrast_list) {
+  pic <- file.path(params$alpha_shannon_curve_dir, contrast, glue("{contrast}.shannon.rarefaction_curve.png"))
+  cat("##### ", contrast, " \n")
+  cat("\n")
+  cat("![](", pic, "){width=60%}", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**图4.4.3-1 Shannon多样性指数稀释性曲线图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** 横坐标为从某个样本中随机抽取的测序条数，纵坐标为Shannon指数。随着测序量增加发现的物种增多，直到物种饱和后，增加抽样条数也并不能发现新的特征。</center>", "\n")
+  cat("<center>&nbsp;<center>", "\n")
+  cat("\n")
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- Shannon多样性指数稀释性曲线图和数据表格：results/04.alpha_diversity/alpha_rarefaction_curve/shannon/\*.shannon.rarefaction_curve.{pdf,png,xls}。

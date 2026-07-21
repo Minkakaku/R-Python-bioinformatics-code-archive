@@ -1,0 +1,258 @@
+### 4.5 Beta多样性分析
+
+&emsp;&emsp;使用QIIME软件进行Beta多样性（Beta diversity）<sup>[12]</sup>分析，比较不同样品本物种多样性方面存在的相似程度。Beta多样性分析主要采用Jaccard、 Bray-Curtis、 Weighted Unifrac（限细菌）、 Unweighted Unifrac（限细菌）等4种算法计算样品间的距离从而获得样本间的Beta值。这四个算法主要分为两大类：加权（Bray-Curtis和Weighted Unifrac）与非加权（Jaccard和Unweighted Unifrac）。利用非加权的计算方法，主要比较的是物种的有无，如果两个群体的Beta多样性越小,则说明两个群体的物种类型越相似。而加权方法，则需要同时考虑物种有无和物种丰度两个问题。
+
+<center>**表4.5-1 常见微生物Beta多样性算法分类表**</center>
+
+<center>&nbsp;</center>
+
+```{r, echo=FALSE, warning=FALSE, results='asis'}
+
+feature_list <- c("Bray-Curtis", "Jaccard")
+phylo_list <- c("Weighted Unifrac", "Unweighted Unifrac")
+type_list <- c("加权", "非加权")
+output_df <- data.frame(type_list = type_list,
+                        feature_list  = feature_list,
+                        phylo_list = phylo_list)
+
+kbl(output_df, align='c', col.names=c("", "基于Feature", "基于系统发生树")) %>%
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "center") %>%
+  row_spec(0, bold = T, color = "white", background = "#377EB8", extra_css = "border-width:0px;") %>%
+  column_spec(1, bold = T, color = "white", background = "#377EB8", extra_css = "border-width:0px;") %>%
+  column_spec(c(2,3), width = "4cm") %>%
+  column_spec(1, width = "3cm")
+
+```
+
+&emsp;&emsp;从上图分类可以看出，Jaccard和Bray-Curtis算法仅基于样品所包含的序列特征比较物种差异（即基于Feature进行比较），而UniFrac则利用了系统进化的信息（即基于系统发生树进行比较），考虑了物种间的进化距离来比较样品间的物种群落差异（限细菌）。此时基于Jaccard和Bray-Curtis的计算方式认为各Feature序列之间是相互独立的不存在进化关系（各Feature间关系平等）；而基于系统发生树的计算方法，会根据16S的序列信息对Feature进行进化树分类（目前仅支持16S测序数据的系统发生树距离计算，ITS系统发育信息不完善），此时不同Feature之间的距离实际上有“远近”之分。
+
+&emsp;&emsp;建议：在微生物多样性分析中，由于环境中的微生物复杂多样，各环境间物种的组成差异更为剧烈，所以通常采用非加权方法进行分析。但如果要研究对照与实验处理组之间的关系采用非加权分析比较不出明显差异，则更推荐加权分析方式。两类分析方法实际上是没有好坏之分，主要依据不同的研究目的选用更为适合的方法进行数据分析，Beta多样性分析采用多种算法进行分析，为您提供了全面的分析结果，您可以在分析结果中挑选最能解释生物学问题的方法即可<sup>[14]</sup>。
+
+&emsp;&emsp;**结果文件：**
+
+- Beta多样性四种距离矩阵表格：results/05.beta_diversity/bbeta_matrix/beta_*_matrix.xls。
+
+&nbsp;
+
+#### 4.5.1 PCA分析 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;主成分分析（Principal Component Analysis，PCA）<sup>[15]</sup>是一种分析和简化数据集的技术，通过将方差进行分解，将多组数据的差异反映在二维坐标图上。通过分析不同样品ASVs特征组成可以反映样品的差异和距离，PCA运用方差分解，将多组数据的差异反映在二维坐标图上，坐标轴取能够最大反映方差的两个特征值。两个样品距离越近，则表示这两个样品的组成越相似。组间PCA分析可视化结果如下：
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$beta_pca_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+for (contrast in sort_contrast_list) {
+  pic <- file.path(params$beta_pca_dir, contrast, glue("{contrast}.PCA.png"))
+  cat("##### ", contrast, " \n")
+  cat("\n")
+  cat("![](", pic, "){width=60%}", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**图4.5.1-1 PCA分析图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** 图中每个点代表一个样品；不同颜色代表不同分组；椭圆形圈表示其为95%置信椭圆（即该样本组假如有100个样本会有95个落在其中）。横坐标表示第一主成分，百分比则表示第一主成分对样品差异的贡献值；纵坐标表示第二主成分，百分比表示第二主成分对样品差异的贡献值。</center>", "\n")
+  cat("<center>&nbsp;<center>", "\n")
+  cat("\n")
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- Beta多样性PCA分析图和数据表格：results/05.beta_diversity/beta_PCA/\*/\*.PCA.{pdf,png,xls}。
+
+&nbsp;
+
+#### 4.5.2 PCoA分析 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;主坐标分析法（Principal coordinates analysis，PCoA）<sup>[16]</sup>是一种与PCA类似的降维排序方法，原理是假设对N个样品有衡量它们之间差异或距离的数据，就可以用此方法找出一个直角坐标系，将N个样品表示成N个点，而使点间的欧式距离的平方正好等于原来的差异数据，实现定性数据的定量转换，从多维数据中提取出最主要的元素和结构。通过主坐标分析可以实现多个样品的分类，进一步展示样品间物种多样性差异。基于Beta多样性分析得到的四种距离矩阵，分别绘制PCoA分析结果，如下图所示：
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$beta_pcoa_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+beta_list <- c("braycurtis", "jaccard", "weighted_unifrac", "unweighted_unifrac")
+beta_name_list <- c("Bray-Curtis", "Jaccard", "Weighted Unifrac", "Unweighted Unifrac")
+
+for (contrast in sort_contrast_list) {
+  for (beta in beta_list) {
+    beta_name <- beta_name_list[which(beta_list == beta)]
+    pic <- file.path(params$beta_pcoa_dir, contrast, glue("{contrast}.{beta}.PCoA.png"))
+    cat("##### ", glue("{contrast}: {beta_name}"), " \n")
+    cat("\n")
+    cat("![](", pic, "){width=60%}", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**图4.5.2-1 PCoA分析图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 图中每个点代表一个样品；不同颜色代表不同分组；椭圆形圈表示其为95%置信椭圆（即该样本组假如有100个样本会有95个落在其中）。横坐标表示第一主成分，百分比则表示第一主成分对样品差异的贡献值；纵坐标表示第二主成分，百分比表示第二主成分对样品差异的贡献值。</center>", "\n")
+    cat("<center>&nbsp;<center>", "\n")
+    cat("\n")
+  }
+
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- Beta多样性四种距离PCoA分析图和数据表格：results/05.beta_diversity/beta_PCoA/\*/\*.\*.PCoA.{pdf,png,xls}。
+
+&nbsp;
+
+#### 4.5.3 NMDS分析 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;非度量多维标定法（Non-MetricMulti-Dimensional Scaling，NMDS）<sup>[17]</sup>是一种适用于生态学研究的排序方法，主要是将多维空间的研究对象（样本或变量）简化到低维空间进行定位、分析和归类，同时又保留对象间原始关系的数据分析方法。类似于PCA或者PCoA，通过样本的分布可以看出组间或组内差异。NMDS原设计的目的是为了克服以前排序方法中包括PCA、PCoA在内的缺点，即线性模型。NMDS的模型是非线性的，能更好地反映生态学数据的非线性结构，有的研究认为NMDS的效果优于PCA/PCoA。NMDS分析结果如下图所示：
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$beta_nmds_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+beta_list <- c("braycurtis", "jaccard", "weighted_unifrac", "unweighted_unifrac")
+beta_name_list <- c("Bray-Curtis", "Jaccard", "Weighted Unifrac", "Unweighted Unifrac")
+
+for (contrast in sort_contrast_list) {
+  for (beta in beta_list) {
+    beta_name <- beta_name_list[which(beta_list == beta)]
+    pic <- file.path(params$beta_nmds_dir, contrast, glue("{contrast}.{beta}.NMDS.png"))
+    cat("##### ", glue("{contrast}: {beta_name}"), " \n")
+    cat("\n")
+    cat("![](", pic, "){width=60%}", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**图4.5.3-1 NMDS分析图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 图中每个点代表一个样品；不同颜色代表不同分组；椭圆形圈表示其为95%置信椭圆（即该样本组假如有100个样本中会有95个落在其中）。当stress小于0.1时，可认为是一个好的排序；当stress小于0.05时，则具有很好的代表性。通常认为，当Stress小于0.2时，表明NMDS分析具有一定的可靠性。在坐标图上距离越近的样品，相似性越高。</center>", "\n")
+    cat("<center>&nbsp;<center>", "\n")
+    cat("\n")
+  }
+
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- Beta多样性四种距离NMDS分析图和数据表格：results/05.beta_diversity/beta_NMDS/\*/\*.\*.NMDS.{pdf,png,xls}。
+
+&nbsp;
+
+#### 4.5.4 UPGMA分析 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;UPGMA（Unweighted Pair-group Method with Arithmetic Mean）<sup>[18]</sup>即：非加权组平均法，也可理解为样品层次聚类，是一种常用的聚类分析方法。其原理是：假定的前条件是在进化过程中，每一世系发生趋异的次数相同，即核苷酸或氨基酸的替换速率是均等且恒定的。通过UPGMA法所产生的系统发生树可以说是物种树的简单体现，在每一次趋异发生后，从共同祖先节点到2个特征间的支的长度一样。因此，这种方法较多地用于物种树的重建。
+
+&emsp;&emsp;基于Beta多样性分析得到的四种距离矩阵，通过QIIME软件采用非加权配对平均法（UPGMA）对样本进行层次聚类，以判断各样本间物种组成的相似性。UPGMA聚类树与柱状图结合绘图是将聚类树与丰度柱状图结合起来展示的一种分析手段。左图为样品UPGMA聚类树（样品越靠近，枝长越短，说明两个样品的物种组成越相似），右图为各样本属水平的丰度柱状图，用以判断各样品间物种丰度的相似性。
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$beta_upgma_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+beta_list <- c("braycurtis", "jaccard", "weighted_unifrac", "unweighted_unifrac")
+beta_name_list <- c("Bray-Curtis", "Jaccard", "Weighted Unifrac", "Unweighted Unifrac")
+
+for (contrast in sort_contrast_list) {
+  for (beta in beta_list) {
+    beta_name <- beta_name_list[which(beta_list == beta)]
+    pic <- file.path(params$beta_upgma_dir, contrast, glue("{contrast}.{beta}.UPGMA.png"))
+    cat("##### ", glue("{contrast}: {beta_name}"), " \n")
+    cat("\n")
+    cat("![](", pic, "){width=100%}", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**图4.5.4-1 UPGMA聚类树和属水平丰度柱状图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 左下方图注颜色代表聚类树样品所在分组的颜色，右方图注代按表物种属水平丰度排名前10的物种，其他归为Others。</center>", "\n")
+    cat("<center>&nbsp;<center>", "\n")
+    cat("\n")
+  }
+
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- Beta多样性四种距离UPGMA树文件：results/05.beta_diversity/beta_UPGMA/\*/\*.\*.UPGMA.tre；
+- Beta多样性四种距离UPGMA聚类树和属水平丰度柱状图：results/05.beta_diversity/beta_UPGMA/\*/\*.\*.UPGMA.{pdf,png}。
+
+&nbsp;
+
+#### 4.5.5 聚类热图分析 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;基于四种Beta多样性距离算法绘制样本聚类热图，根据颜色梯度的变化直观看出两两样本间的差异性。样本聚类热图如下图所示，颜色梯度由蓝色到红色表示样品间距离由近到远。
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$beta_heatmap_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+beta_list <- c("braycurtis", "jaccard", "weighted_unifrac", "unweighted_unifrac")
+beta_name_list <- c("Bray-Curtis", "Jaccard", "Weighted Unifrac", "Unweighted Unifrac")
+
+for (contrast in sort_contrast_list) {
+  for (beta in beta_list) {
+    beta_name <- beta_name_list[which(beta_list == beta)]
+    pic <- file.path(params$beta_heatmap_dir, contrast, glue("{contrast}.{beta}.heatmap.png"))
+    cat("##### ", glue("{contrast}: {beta_name}"), " \n")
+    cat("\n")
+    cat("![](", pic, "){width=60%}", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**图4.5.5-1 样本聚类热图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 图中第一行为样品分组信息，颜色与图例对应。</center>", "\n")
+    cat("<center>&nbsp;<center>", "\n")
+    cat("\n")
+  }
+
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- Beta多样性四种距离聚类热图：results/05.beta_diversity/beta_heatmap/\*/\*.\*.heatmap.{pdf,png}。
+
+&nbsp;
+
+#### 4.5.6 Anosim分析 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;Anosim（Analysis of Similarities）<sup>[19]</sup>分析，也叫相似性分析，它们主要是用于分析多维度数据组间相似性的统计方法。在PCoA分析、NMDS分析中不同分组的样本点之间的差异是否显著，没有相应的统计检验结论。Anosim分析可以对不同分组的样品之间beta多样性是否显著差异进行检验。Anosim分析得到的R值越接近1表示组间差异越大于组内差异，R值越小则表示组间和组内没有明显差异，P值小于0.05时说明检验的可信度高。检验结果的箱形图展示如下：
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$beta_anosim_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+beta_list <- c("braycurtis", "jaccard", "weighted_unifrac", "unweighted_unifrac")
+beta_name_list <- c("Bray-Curtis", "Jaccard", "Weighted Unifrac", "Unweighted Unifrac")
+
+for (contrast in sort_contrast_list) {
+  for (beta in beta_list) {
+    beta_name <- beta_name_list[which(beta_list == beta)]
+    pic <- file.path(params$beta_anosim_dir, contrast, glue("{contrast}.{beta}.anosim.png"))
+    cat("##### ", glue("{contrast}: {beta_name}"), " \n")
+    cat("\n")
+    cat("![](", pic, "){width=60%}", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**图4.5.6-1 Anosim分析结果箱型图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 纵坐表示Beta多样性距离；“Between”上方箱图代表所有组间本Beta多样性距离数据，后面的箱型图分别是不同分组的组内样本间的Beta多样性距离数据，标题展示Anosim分析的R值和P值。</center>", "\n")
+    cat("<center>&nbsp;<center>", "\n")
+    cat("\n")
+  }
+
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- Beta多样性Anosim分析箱型图和数据表格：results/05.beta_diversity/beta_anosim/\*/\*.\*.anosim.{pdf,png,xls}。

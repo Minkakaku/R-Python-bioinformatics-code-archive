@@ -1,0 +1,268 @@
+---
+title: "<center>定量蛋白质修饰组学分析报告</center>"
+author: '`r knitr::opts_chunk$set(out.width="15%")` `r knitr::include_graphics("logo.png")`'
+date: "<center>报告创建日期：`r format(Sys.Date(),'%Y-%m-%d')`</center>"
+runtime: "static"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 2
+    toc_float: yes
+    theme: flatly
+    number_sections: true
+  
+---
+
+```{r global_options, include=FALSE}
+library(DT)
+library(slickR)
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE,out.width = "80%")
+showplot=function(x,h=600,tag=".png",path="./"){
+  type="image"
+  pattern=paste0(x,'.*',tag)
+  obj.list=dir(path = path,pattern = pattern,full.names = T)
+  obj.name=sub(obj.list,pattern = paste0('.*',x),replacement = "")
+  obj.name=sub(obj.name,pattern = tag,replacement = "")
+  obj.name = lapply(obj.name, function(x) p(x,style="font-size:20px;text-align:center"))
+
+  if(tag=='.html'){
+    type='iframe'
+    obj.list=lapply(obj.list,includeHTML)
+  }
+  
+  slickR(obj = obj.list,height = h,slideType = type) %synch%
+  (slickR(obj.name) + settings(arrows = FALSE))
+}
+showtable=function(x,h=600,tag=".xls",path="./"){
+  type="iframe"
+  pattern=paste0(x,'.*',tag)
+  obj.list=dir(path = path,pattern = pattern,full.names = T)
+  obj.name=sub(obj.list,pattern = paste0('.*',x),replacement = "")
+  obj.name=sub(obj.name,pattern = tag,replacement = "")
+  obj.name = lapply(obj.name, function(x) p(x,style="font-size:20px;text-align:center"))
+
+  obj.list=lapply(obj.list,function(x){
+    data=fread(file = x)
+    datatable(subset(data,Regulation!='unchanged'),rownames=F,
+                        options=list(
+                            buttons = 'excel',
+                            initComplete = JS(
+                                "function(settings, json) {",
+                                "$(this.api().table().header()).css({'background-color': '#555', 'color': '#fff'});",
+                                "}"))
+                        )
+    })
+  
+  slickR(obj = obj.list,height = h,slideType = type) %synch%
+  (slickR(obj.name) + settings(arrows = FALSE))
+}
+
+
+db.name=input$analysis.db
+db.time=sub(values$summary.data[values$summary.data$`Database name`==db.name,2],pattern = " .*",replacement = "")
+db.count=values$summary.data[values$summary.data$`Database name`==db.name,3]
+
+```
+
+
+<style type ="text/css">
+ body {
+ font-size: 15px;
+ font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+}
+ td {
+ font-size: 11px;
+ text-align: center;
+ font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+}
+ th {
+ font-size: 11px;
+ text-align: center;
+ font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+ font-weight: 600;
+}
+ h1 {
+ font-size: 25px;
+ padding: 15px 0;
+ font-weight: 600;
+ color: #377EB8;
+ font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+}
+ h2 {
+ font-size: 22px;
+ padding: 15px 0;
+ font-weight: 600;
+ color: #377EB8;
+ font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+}
+ h3 {
+ font-size: 20px;
+ font-weight: 600;
+ padding: 15px 0;
+ color: #377EB8;
+ font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+}
+ h4 {
+ font-size: 14px;
+ font-weight: 600;
+ padding: 15px 0;
+ color: #377EB8;
+ font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+} h5 {
+  line-height: 200%;
+  text-align: center;
+  font-weight: 600;
+  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+}
+ img {
+    margin-left: auto;
+    margin-right:auto;
+    display:block;
+}p {
+    line-height: 200%;
+    font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+    text-align: justify;
+    font-size: 15px
+}li {
+    line-height: 200%;
+    font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+    text-align: justify;
+    font-size: 15px
+}
+</style>
+
+```{r}
+datatable(values$project.info,rownames = F,colnames = "",options = list(dom = 't'),style = "auto") %>% formatStyle(1,`font-size` = '20px',`font-weight`="bold",color="#377EB8",`text-align`="right") %>% formatStyle(2,`font-size` = '20px',`font-weight`="bold",`text-align`="left")
+```
+# 富集基因列表
+
+```{r}
+datatable(values$protein.data,rownames = F,options = list(
+    initComplete = JS(
+    "function(settings, json) {",
+    "$(this.api().table().header()).css({'background-color': '#555', 'color': '#fff'});",
+    "}")))
+```
+
+# 蛋白功能注释
+
+为了透彻了解不同修饰蛋白质的功能特性，我们对鉴定到的修饰蛋白质进行全方位的功能注释。包含基因本体论（Gene Ontology，GO）、蛋白结构域（Protein domain）、KEGG通路、COG/KOG功能分类以及亚细胞结构定位（Subcellular localization）等方面进行了详细的注释。注释结果详见文件夹“1-Annotation_of_DEPs/”
+
+# 蛋白功能分类
+
+## GO二级分类
+Gene Ontology（GO）即基因本体论，是一个重要的生物信息学分析方法和工具，用于表述基因和基因产物的各种属性。GO注释分为3大类：生物过程（Biological Process），细胞组分（Cellular Component）和分子功能（Molecular Function），从不同角度阐释蛋白的生物学作用。我们将GO分类中的三大类分别进行了差异蛋白富集分析。
+
+```{r out.height=650,out.width=900}
+showplot("Figure 1a. GO classify of",path = "2-Functional_classification")
+```
+
+## KEGG通路分类
+
+```{r out.height=650,out.width=900}
+showplot("Figure 1d. KEGG classify of",path = "2-Functional_classification")
+```
+
+## COG功能分类
+COG，即Clusters of Orthologous Groups of proteins。构成每个COG的蛋白都是被假定为来自于一个祖先蛋白，Orthologs是指来自于不同物种、由垂直家系（物种形成）进化而来的蛋白，并且典型的保留与原始蛋白相同的功能。COG的中文释义即“同源蛋白簇”。COG分为两类，一类是原核生物，另一类是真核生物。原核生物的一般称为COG数据库；真核生物的一般称为KOG数据库。我们通过数据库比对，将差异表达蛋白进行了COG/KOG功能分类统计。详见：2-Functional_classification/
+
+```{r out.height=650}
+showplot("Figure 1b. KOG classify of",path = "2-Functional_classification")
+```
+
+## 亚细胞定位
+真核生物组织细胞中的蛋白，依据与其结合的膜结构的差异，被定位到细胞内的各种元件上。基于此，我们使用WolF Psort软件对蛋白进行亚细胞结构注释。相对于真核细胞，原核细胞一般没有细胞内膜，没有核膜包裹的成型细胞核，细胞内无染色体，DNA链未螺旋化，并以游离的形式存在于细胞质中，细胞质内也无任何有膜的细胞器（如线粒体或叶绿体）。基于此，我们使用PSORTb（v3.0）软件对蛋白进行亚细胞结构注释
+
+```{r out.height=650}
+showplot("Figure 1c. Subcell classify of",path = "2-Functional_classification")
+```
+
+
+# 蛋白功能富集
+我们对各比较组中的差异表达修饰蛋白分别进行了GO分类、KEGG通路和蛋白结构域三个层面的富集分析（此处运用Fisher’s exact test即费希尔精确检验计算显著性P value），目的是发现差异表达修饰蛋白是否在某些功能类型有显著性的富集趋势。通过气泡图的方式展现差异表达蛋白显著富集（P value < 0.05）到的功能分类和通路。气泡图中给出了最显著富集的前20个分类的结果，纵轴为功能分类或通路，横轴为差异表达修饰蛋白在该功能类型中所占比例相比于鉴定修饰蛋白所占比例的变化倍数（Fold enrichment）的Log2转换后的数值。圆圈颜色表示富集显著性P value，圆圈大小表示功能类或通路中的差异修饰蛋白个数。详见：3-Functional_enrichment/
+
+## GO富集
+Gene Ontology（GO）即基因本体论，是一个重要的生物信息学分析方法和工具，用于表述基因和基因产物的各种属性。GO注释分为3大类：生物过程（Biological Process），细胞组分（Cellular Component）和分子功能（Molecular Function），从不同角度阐释蛋白的生物学作用。我们将GO分类中的三大类分别进行了差异蛋白富集分析。
+
+### Biological process
+```{r out.height=650}
+showplot("Figure 2. Biological process enrichment",path = "3-Functional_enrichment")
+```
+
+### Molecular function
+```{r out.height=650}
+showplot("Figure 2. Molecular function enrichment",path = "3-Functional_enrichment")
+```
+
+### Cellular component
+```{r out.height=650}
+showplot("Figure 2. Cellular component enrichment",path = "3-Functional_enrichment")
+```
+
+
+## KEGG通路富集
+KEGG是连接已知分子间相互作用的信息网络，如代谢通路、复合物、生化反应等。KEGG通路主要包括：代谢、遗传信息处理、环境信息处理、细胞过程、人类疾病、药物开发等。
+
+```{r out.height=650}
+showplot("Figure 2. KEGG enrichment",path = "3-Functional_enrichment")
+```
+
+
+## 蛋白结构域富集
+蛋白质结构域是指在不同蛋白质分子中重复出现的某些组分，具有相似的序列、结构和功能，是蛋白质进化的单元。结构域的长度通常在25到500个氨基酸长度之间。
+
+```{r out.height=650}
+showplot("Figure 2. Pfam enrichment",path = "3-Functional_enrichment")
+```
+
+# 蛋白互作网络分析
+将比较组中根据差异倍数XXX筛选得到的差异蛋白数据库编号或蛋白序列，通过与STRING（v.11.0）蛋白互作网络数据库比对后，按照confidence score > 0.7 （high confidence）提取得到差异蛋白互作关系。然后通过R package “visNetwork”工具对差异蛋白互作网络进行可视化展示。如下图所示：图中圆圈表示差异蛋白，不同颜色代表蛋白的差异表达情况（绿色为下调蛋白，红色为上调蛋白），颜色越深，代表差异倍数越大。为了能清晰的展示蛋白与蛋白之间的互作关系，我们筛选出了前50个互作关系最紧密的蛋白绘制了蛋白互作网络，详见：4-Protein-protein_interaction/。
+
+```{r out.height=650}
+showplot("Figure 4. PPI",tag=".html",path="4-Protein-protein_interaction")
+```
+
+
+# 材料与方法
+
+## 蛋白注释方法
+
+**Gene Ontology注释**
+
+Gene Ontology分析（GO分析），是一种能够将基因与基因产物（如蛋白质）的各项信息有机的联系在一起进而提供统计学信息的生物信息学分析方法。在蛋白质组学项目中，GO主要有下列用途：1、作为蛋白及基因的各项信息的数据库； 2、提供蛋白及基因的各种信息，并按照信息对蛋白及基因进行分类；3、作为一个工具，为项目中的所有蛋白提供最全面的信息注释和分类服务。GO分析主要包括三个方面：1、细胞组分：指细胞的特定成分，在GO系统中它应当是细胞中较大组分的组成元件。比如解剖学上的某些细胞结构（糙面内质网、细胞核等），或一系列基因产物，如一些复杂成分的基础结构（核糖体，蛋白二聚体等）。2、分子功能：主要描述分子的化学活性，比如能够在分子层面表现出来的催化活性或结合活性。3、生物过程：生物体内一系列分子有序的执行某项特定功能，被称为生物过程。GO注释是将鉴定到的蛋白利用eggnog-mapper软件（v2.0）进行注释分析。该软件基于EggNOG数据库，目前最新版是第5版，涵盖了5090个生物（477个真核生物、4445个代表性细菌和168个古细菌）以及2502个病毒的全基因组编码蛋白质序列。这里提取每个蛋白质注释结果中的GO ID，然后按照细胞组分，分子功能和生物过程对蛋白进行功能分类。
+
+**蛋白结构域注释**
+
+蛋白的结构域是指蛋白质中在序列上具有保守性，且一般情况下可以独立行使功能的特定蛋白区域，是分子功能的结构元件，一般由25至500个氨基酸构成。这些区域在空间上相对紧凑、结构上相对稳定、能够独立的被折叠为功能性的结构。一个蛋白质可能拥有多个结构域，一个结构域也可能存在于多种蛋白质中。项目数据中，基于Pfam数据库及相应的PfamScan工具对鉴定到的蛋白质进行蛋白结构域注释。
+
+**KEGG通路注释**
+
+Kyoto Encyclopedia of Genes and Genomes（KEGG）能够将当前已知的蛋白互作网络信息，比如通路及相关复合体（Pathway数据库）、基因及基因产物（Gene数据库）、生物内复合物及相关反应（Compound and Reaction数据库）等信息进行整合。KEGG的通路主要包括：代谢、遗传信息处理、环境信息处理、细胞过程、人类疾病、药物开发等。我们基于KEGG通路数据库对蛋白通路进行注释，将鉴定到的蛋白质进行BLAST比对（blastp，evalue ≤ 1e-4），对于每一条序列的BLAST比对结果，选取比对得分（score）最高的比对结果进行注释。
+
+**亚细胞定位**
+
+真核生物组织细胞中的蛋白，依据与其结合的膜结构的差异，被详尽的定位到细胞内各种元件上。真核细胞主要的亚细胞定位包括：胞外、细胞质、细胞核、线粒体、高尔基体、内质网、过氧化物酶体、液泡、细胞骨架、核质、核基质以及核糖体等。基于此，我们使用预测亚细胞定位的WolF Psort软件对所提交的蛋白进行亚细胞定位注释。相对于真核细胞，原核细胞一般没有细胞内膜，没有核膜包裹的成型细胞核，细胞内无染色体，DNA链未螺旋化，并以游离的形式存在于细胞质中，细胞质内也无任何有膜的细胞器（如线粒体或叶绿体）。此外，根据《伯杰氏细菌鉴定手册》，原核生物分为四大类：“有细胞壁的革兰氏阴性真细菌”、“有细胞壁的革兰氏阳性真细菌”、“无细胞壁的真细菌”、“古细菌”。基于此，我们使用PSORTb软件（v3.0）对以上四类原核生物中鉴定到蛋白质进行亚细胞结构预测分析。
+
+**COG/KOG**
+
+COG，即Clusters of Orthologous Groups of proteins。构成每个COG的蛋白都是被假定为来自于一个祖先蛋白，Orthologs是指来自于不同物种、由垂直家系（物种形成）进化而来的蛋白，并且典型的保留与原始蛋白相同的功能。COG的中文释义即“同源蛋白簇”。COG分为两类，一类是原核生物，另一类是真核生物。原核生物的一般称为COG数据库；真核生物的一般称为KOG数据库。相较于其它数据库，比如NCBI的COG数据库，EggNOG提供了更全面的物种和更多蛋白质序列的同源分类，并对每个同源基因簇进行了系统发育树构建和功能注释。
+
+## 蛋白质功能富集
+
+**GO富集分析**
+
+蛋白的GO注释被分为3个大类：生物过程、细胞组分、分子功能。使用费希尔精确检验（Fisher’s exact test）对差异表达蛋白进行GO富集显著性分析（以鉴定到的蛋白为背景），P value < 0.05被认为是显著的。
+
+**KEGG通路富集分析**
+
+Kyoto Encyclopedia of Genes and Genomes（KEGG）数据库用于差异表达蛋白的通路富集分析。使用费希尔精确检验（Fisher’s exact test）对差异表达蛋白进行通路富集显著性分析（以鉴定到的蛋白为背景），P value < 0.05被认为是显著的。
+
+**蛋白结构域富集分析**
+
+Pfam数据库用于分析差异表达蛋白的功能结构域的富集情况。费希尔精确检验方法被用于检验差异表达蛋白在以鉴定蛋白为背景下的结构域富集显著性，P value < 0.05被认为是显著的。
+### 基于蛋白功能富集的聚类分析
+基于不同分组的差异表达蛋白（或者不同差异倍数的差异表达蛋白）功能富集的聚类分析用于研究其在特定功能（GO、KEGG通路、蛋白结构域）上存在的潜在联系和差异。首先收集所用蛋白分组富集到的功能分类信息和对应的富集P value值，然后筛选出至少在一个蛋白分组中为显著富集（P value < 0.05）的功能分类。筛选得到的P value数据矩阵首先经过以-Log10为底的对数变换，然后将变换后的数据矩阵对各功能分类运用Z变换。最后将Z变换后得到的数据集使用层次聚类（欧式距离，平均连接聚类）方法做单边聚类分析。聚类关系使用R语言包pheatmap绘制出的热图进行可视化展示。
+
+## 蛋白互作网络分析
+将比较组中筛选得到的差异表达蛋白数据库编号或蛋白序列，通过与STRING（v.11.0）蛋白互作网络数据库比对后，按照confidence score > 0.7（high confidence）提取得到差异表达蛋白互作关系。然后通过R package “networkD3”工具对差异表达蛋白互作网络进行可视化展示。
+

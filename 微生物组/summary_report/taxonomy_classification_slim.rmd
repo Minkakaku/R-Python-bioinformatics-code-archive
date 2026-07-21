@@ -1,0 +1,65 @@
+### 4.3 物种注释及分类学分析
+
+&emsp;&emsp;根据物种参考数据库<sup>[10]</sup>（`r params$tax_database`）使用朴素贝叶斯分类器（Naive Bayesian classifier）对ASVs特征序列进行分类学注释，可得到每个ASVs特征对应的物种分类信息，进而在各水平（门Phylum，纲Class，目Order，科Family，属Genus，种Species）统计各样品群落组成，利用QIIME2软件生成不同分类水平上的物种丰度表，再进行物种分布柱状图、物种丰度聚类热图和Krona<sup>[11]</sup>物种注释等可视化分析。
+
+&emsp;&emsp;**结果文件：**
+
+- 各个物种分类层级的绝对丰度表: results/03.taxonomy/abundance/absolute/all.\*.absolute.xls；
+- 各个物种分类层级的相对丰度表: results/03.taxonomy/abundance/relative/all.\*.relative.xls；
+- 各条ASVs序列的物种注释结果: results/03.taxonomy/ASVs_taxonomy.xls。
+
+&nbsp;
+
+#### 4.3.1 物种分布柱状图 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;从不同分类层级的物种丰度表出发，选取出在各样本中的最大相对丰度排名前10的物种，并将其余的物种设置为“Others”，绘制出各样本对应的物种注释结果（相对丰度前10的物种）在不同分类层级上的相对丰度柱形图（“Unclassified_”开头的名称代表未得到分类学注释的物种）。
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$tax_barplot_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+for (contrast in sort_contrast_list) {
+  for (level in c("Phylum", "Class", "Order", "Family", "Genus", "Species")) {
+    pic <- file.path(params$tax_barplot_dir, contrast, glue("{contrast}.{level}.barplot.png"))
+    plot_name <- glue("{contrast} - {level}")
+    cat("##### ", plot_name, " \n")
+    cat("\n")
+    cat("![](", pic, "){width=60%}", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**图4.3.1-1 物种丰度分布柱形图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 横坐标为样本名称；纵坐标为相对丰度百分比。不同颜色的堆叠柱为各样本中的最大相对丰度排名前10的物种，其余的物种合并在“Others”中。</center>", "\n")
+    cat("<center>&nbsp;<center>", "\n")
+    cat("\n")
+  }
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 各分类层级相对丰度前10物种的相对丰度柱形图和表格（样本水平）：results/03.taxonomy/barplot/\*/\*.\*.barplot.{pdf,png,xls}；
+- 各分类层级相对丰度前10物种的相对丰度柱形图和表格（分组水平）：results/03.taxonomy/barplot/\*/\*.\*.group.barplot.{pdf,png,xls}。
+
+&nbsp;
+
+#### 4.3.2 Krona物种注释
+
+&emsp;&emsp;为了综合而直观地展示各样本中，不同分类层级的物种相对丰度，我们采用Krona对物种注释结果进行可视化展示，Krona示例图如下所示，详细结果请[点击](../03.taxonomy/krona/taxonomy.krona.html)。
+
+![](`r params$krona_example_pic`){width=60%}
+
+<center>**图4.3.2-1 使用Krona对物种注释结果进行展示（示例图）**</center>
+
+<center>&nbsp;</center>
+
+<center>**说明** 图中，圆圈从内到外依次代表不同的分类级别（界门纲目科属种）；扇形的大小代表不同物种的相对比例；更多详细的信息请参考[Krona展示结果详解](https://github.com/marbl/Krona/wiki/)。</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;**结果文件：**
+
+- Krona展示结果html文件：results/03.taxonomy/krona/taxonomy.krona.html。

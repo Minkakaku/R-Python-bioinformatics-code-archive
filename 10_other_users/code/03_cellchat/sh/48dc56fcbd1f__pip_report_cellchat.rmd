@@ -1,0 +1,495 @@
+---
+title: "<center>细胞通讯分析报告</center>"
+author:
+  - name: "<center>杭州广科安德生物科技有限公司</center>"
+date:
+  - "<center>`r Sys.Date()`</center>"
+runtime: static
+output:
+  html_notebook: 
+    toc: true
+    toc_float: true
+    theme: cerulean
+  html_document: 
+    toc: true
+    toc_float: true
+    theme: united
+    number_sections: true
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, out.width = "90%", message = FALSE, warning = FALSE)
+```
+
+```{=html}
+<style type ="text/css">body .main-container {    max-width: 1500px;    margin-left: 100px;    margin-right: 100px;} td { font-size: 15px; text-align: center; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} th { font-size: 15px; text-align: center; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif"; font-weight: 600;} h1 { font-size: 25px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h2 { font-size: 22px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h3 { font-size: 20px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h4 { font-size: 18px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h5 {  line-height: 200%;  text-align: center;  font-weight: 600;  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} img {    margin-left: auto;    margin-right:auto;    display:block;}p {    line-height: 180%;    font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";    text-align: justify;    font-size: 15px;}
+</style>
+```
+
+# 细胞通讯分析
+
+  多细胞生物的细胞与细胞之间往往会通过细胞因子和膜蛋白等进行通讯，从而调节生命活动，保证生命体高效、有序的运作。其中，受体-配体介导的细胞间通讯对协调发育、分化和疾病等多种生物学过程至关重要。细胞通讯分析通过统计不同细胞类型中受体和配体的表达及配对情况，推断不同细胞之间的相互作用。CellChat通过采用网络分析和模式识别方法，能够从单细胞RNA测序（scRNA-seq）数据中识别出细胞间通讯的关键节点和信号通路，推测细胞的主要输入和输出信号，以及这些细胞和信号是如何协调以实现特定功能。CellChat可以定量地推断和分析细胞间通讯网络，揭示细胞间复杂的相互作用关系。
+
+```{r echo=FALSE, out.width="70%"}
+knitr::include_graphics("/mnt/NexData_file/share/scRNA-tools/report/CellChat_Logo.png")
+```
+
+# 推断细胞通讯网络
+
+  CellChat推断出的配体-受体对的数量取决于每个细胞类群平均基因表达，通过为每个相互作用计算通信概率值并进行置换检验来推断显著的细胞-细胞通信。通过汇总与每个信号通路相关的所有配体-受体相互作用的通讯概率，计算信号通路水平上的通信概率。
+
+## 细胞通讯网络统计分析 {.tabset .tabset-fade .tabset-pills}
+
+  包含2组4个数据表，其中包含配体/受体级别、信号通路级别所有推断的细胞间通信：
+
+-   source：发送信号细胞类型
+-   target：接收信号细胞类型
+-   ligand：配体名，配体是细胞间通信的信号分子
+-   receptor：受体名，受体是接收配体信号的分子
+-   prob：通信概率，表示发送信号细胞群与接收信号细胞群之间通信的可能性
+-   pval：通信概率的p值
+-   interaction_name/interaction_name_2：配体-受体相互作用表达形式
+-   pathway_name：涉及的信号通路名
+-   annotation：相互作用的注释（如分泌信号）
+-   evidence：支持通信存在的证据
+
+```{r, results='asis'}
+library(glue)
+cat(glue("### {params$Group1} 分组统计\n"))
+```
+
+  包含信号通路级别所有推断的细胞间通信结果如下表所示：
+
+```{r echo=FALSE, warning=FALSE}
+library(DT)
+data <- read.table(glue('./{params$Group1}-netPathways_lr.txt'), sep = '\t', header = TRUE, check.names = FALSE)
+datatable(data,rownames=FALSE,filter='top',class='stripe',style='default',
+          extensions = 'Buttons', options = list(
+            dom = 'Bfrtip',
+            buttons = c('copy','excel', 'pdf')
+          )
+)%>% formatRound(c('prob','pval'), 2)
+```
+
+表格对应源文件 : `r params$Group1`-netPathways_lr
+<font size="5">[txt](./%60r%20params$Group1%60-netPathways_lr.txt)</font>
+
+------------------------------------------------------------------------
+
+  包含配体/受体级别所有推断的细胞间通信结果如下表所示：
+
+```{r echo=FALSE, warning=FALSE}
+library(DT)
+data <- read.table(glue('./{params$Group1}-net_lr.txt'), sep = '\t', header = TRUE, check.names = FALSE)
+datatable(data,rownames=FALSE,filter='top',class='stripe',style='default',
+          extensions = 'Buttons', options = list(scrollX=TRUE,
+          dom = 'Bfrtip',
+          buttons = c('copy','excel', 'pdf')
+          )
+)%>% formatRound(c('prob','pval'), 2)
+```
+
+表格对应源文件 : `r params$Group1`-net_lr
+<font size="5">[txt](./%60r%20params$Group1%60-net_lr.txt)</font>
+
+```{r, results='asis'}
+library(glue)
+cat(glue("### {params$Group2} 分组统计\n"))
+```
+
+  包含信号通路级别所有推断的细胞间通信结果如下表所示：
+
+```{r echo=FALSE, warning=FALSE}
+library(DT)
+if(params$Group2!="F"){
+data <- read.table(glue('./{params$Group2}-netPathways_lr.txt'), sep = '\t', header = TRUE, check.names = FALSE)
+datatable(data,rownames=FALSE,filter='top',class='stripe',style='default',
+          extensions = 'Buttons', options = list(
+            dom = 'Bfrtip',
+            buttons = c('copy','excel', 'pdf')
+          )
+)%>% formatRound(c('prob','pval'), 2)
+}
+```
+
+表格对应源文件 : `r params$Group2`-netPathways_lr
+<font size="5">[txt](./%60r%20params$Group2%60-netPathways_lr.txt)</font>
+
+------------------------------------------------------------------------
+
+  包含配体/受体级别所有推断的细胞间通信结果如下表所示：
+
+```{r echo=FALSE, warning=FALSE}
+library(DT)
+if(params$Group2!="F"){
+data <- read.table(glue('./{params$Group2}-net_lr.txt'), sep = '\t', header = TRUE, check.names = FALSE)
+datatable(data,rownames=FALSE,filter='top',class='stripe',style='default',
+          extensions = 'Buttons', options = list(scrollX=TRUE,
+            dom = 'Bfrtip',
+            buttons = c('copy','excel', 'pdf')
+          )
+)%>% formatRound(c('prob','pval'), 2)
+}
+```
+
+表格对应源文件 : `r params$Group2`-net_lr
+<font size="5">[txt](./%60r%20params$Group2%60-net_lr.txt)</font>
+
+# 细胞通讯网络可视化
+
+  细胞互作关系展示，细胞互作数量与强度统计分析。细胞互作数量(Number)即细胞和细胞之间通信的数量（有多少个配体-受体对）和细胞互作强度(Weight)即细胞和细胞之间通信概率求和
+
+## 细胞互作数量分组展示热图
+
+-   热图颜色深浅代表信号数量，上方的柱状图表示每个亚群接收到的信号数量变化的总和。右侧的柱状图表示每个亚群发出的信号数量变化的总和。
+
+```{r echo=FALSE, out.width="100%"}
+knitr::include_graphics("./group_Number_netVisual_heatmap.png")
+```
+
+图片对应源文件 : group_Number_netVisual_heatmap
+<font size="5">[pdf](./group_Number_netVisual_heatmap.pdf) /
+[png](./group_Number_netVisual_heatmap.png)</font>
+
+## 细胞互作强度分组展示热图
+
+-   热图颜色深浅代表信号强度，上方的柱状图表示每个亚群接收到的信号强度变化的总和。右侧的柱状图表示每个亚群发出的信号强度变化的总和。
+
+```{r echo=FALSE, out.width="100%"}
+knitr::include_graphics("./group_Weight_netVisual_heatmap.png")
+```
+
+图片对应源文件 : group_Weight_netVisual_heatmap
+<font size="5">[pdf](./group_Weight_netVisual_heatmap.pdf) /
+[png](./group_Weight_netVisual_heatmap.png)</font>
+
+## 细胞互作数量分组展示环图
+
+-   外周圆圈的线条粗细表示细胞内互作的数量，线条越粗，互作的数量越多。发出箭头的细胞表达配体，箭头指向的细胞表达受体。配体-受体对越多，线越粗。
+
+```{r echo=FALSE, out.width="100%"}
+knitr::include_graphics("./Number_of_interactions_netplot.png")
+```
+
+图片对应源文件 : Number_of_interactions_netplot
+<font size="5">[pdf](./Number_of_interactions_netplot.pdf) /
+[png](./Number_of_interactions_netplot.png)</font>
+
+## 细胞互作强度分组展示环图
+
+-   外周圆圈的线条粗细表示细胞内互作的强度，线条越粗，互作的强度越大。发出箭头的细胞表达配体，箭头指向的细胞表达受体。配体-受体强度越大，线越粗。
+
+```{r echo=FALSE, out.width="100%"}
+knitr::include_graphics("./Weight_of_interactions_netplot.png")
+```
+
+图片对应源文件 : Weight_of_interactions_netplot
+<font size="5">[pdf](./Weight_of_interactions_netplot.pdf) /
+[png](./Weight_of_interactions_netplot.png)</font>
+
+## 细胞互作展示环图 {.tabset .tabset-fade .tabset-pills}
+
+  细胞互作展示环图根据细胞类型拆分，分组展示，线上数字代表细胞互作的对应数量/强度值
+
+```{r, results='asis'}
+library(glue)
+cat(glue("### {params$Group1} 分组统计\n"))
+```
+
+  细胞互作数量展示环图
+
+```{=html}
+<style>
+.container {
+  overflow-y: scroll !important; /* 添加 Y 轴滚动条 */
+  max-height: 400px; /* 设置最大高度 */
+  width: 100%; /* 设置宽度 */
+}
+</style>
+```
+
+::: container
+<img src="./`r params$Group1`_Number_netVisual_circle.png" style="width: 100%; height: auto;"/>
+:::
+
+图片对应源文件 : `r params$Group1`\_Number_netVisual_circle
+<font size="5">[pdf](./%60r%20params$Group1%60_Number_netVisual_circle.pdf)
+/ [png](./%60r%20params$Group1%60_Number_netVisual_circle.png)</font>
+
+------------------------------------------------------------------------
+
+  细胞互作强度展示环图
+
+```{=html}
+<style>
+.container {
+  overflow-y: scroll !important; /* 添加 Y 轴滚动条 */
+  max-height: 400px; /* 设置最大高度 */
+  width: 100%; /* 设置宽度 */
+}
+</style>
+```
+
+::: container
+<img src="./`r params$Group1`_Weight_netVisual_circle.png" style="width: 100%; height: auto;"/>
+:::
+
+图片对应源文件 : `r params$Group1`\_Weight_netVisual_circle
+<font size="5">[pdf](./%60r%20params$Group1%60_Weight_netVisual_circle.pdf)
+/ [png](./%60r%20params$Group1%60_Weight_netVisual_circle.png)</font>
+
+```{r, results='asis'}
+library(glue)
+cat(glue("### {params$Group2} 分组统计\n"))
+```
+
+  细胞互作数量展示环图
+
+```{=html}
+<style>
+.container {
+  overflow-y: scroll !important; /* 添加 Y 轴滚动条 */
+  max-height: 400px; /* 设置最大高度 */
+  width: 100%; /* 设置宽度 */
+}
+</style>
+```
+
+::: container
+<img src="./`r params$Group2`_Number_netVisual_circle.png" style="width: 100%; height: auto;"/>
+:::
+
+图片对应源文件 : `r params$Group2`\_Number_netVisual_circle
+<font size="5">[pdf](./%60r%20params$Group2%60_Number_netVisual_circle.pdf)
+/ [png](./%60r%20params$Group2%60_Number_netVisual_circle.png)</font>
+
+------------------------------------------------------------------------
+
+  细胞互作强度展示环图
+
+```{=html}
+<style>
+.container {
+  overflow-y: scroll !important; /* 添加 Y 轴滚动条 */
+  max-height: 400px; /* 设置最大高度 */
+  width: 100%; /* 设置宽度 */
+}
+</style>
+```
+
+::: container
+<img src="./`r params$Group2`_Weight_netVisual_circle.png" style="width: 100%; height: auto;"/>
+:::
+
+图片对应源文件 : `r params$Group2`\_Weight_netVisual_circle
+<font size="5">[pdf](./%60r%20params$Group2%60_Weight_netVisual_circle.pdf)
+/ [png](./%60r%20params$Group2%60_Weight_netVisual_circle.png)</font>
+
+## 主要发送者（源）和接收者（目标）散点图
+
+  该散点图展示了不同细胞类型在细胞间通信网络中作为信号发送者（sources）和接收者（targets）的角色。X轴表示每个细胞群体发出信号的总通信概率，数值越大，表明该细胞群体作为信号发送者的角色越显著。Y轴表示每个细胞群体接收信号的总通信概率，数值越大，表明该细胞群体作为信号接收者的角色越显著。如果一个细胞组在x轴上的位置较远，它可能是主要的信号发送者，如果在y轴上的位置较远，它可能是主要的信号接收者。点的大小与每个细胞类型相关的互作信号（传出和传入）的数量成正比。点的颜色表示不同的细胞群。
+
+```{r echo=FALSE, out.width="100%"}
+knitr::include_graphics("./Interactions_compare_scatterplot.png")
+```
+
+图片对应源文件 : Interactions_compare_scatterplot
+<font size="5">[pdf](./Interactions_compare_scatterplot.pdf) /
+[png](./Interactions_compare_scatterplot.png)</font>
+
+# 细胞通讯网络差异分析
+
+  为了便于解释复杂的细胞间通信网络，CellChat 通过从graph theory, pattern
+recognition and manifold
+learning中抽象出来的方法对细胞通讯网络进行定量分析。
+
+## 细胞通信数量与强度组间对比
+
+### 细胞通信数量与强度分组展示柱状图
+
+-   左图展示组间通信数量，右图展示组间通信强度。
+    <img src="./Interactions_compare_barplot.png" style="width: 70%; height: auto;"/>
+
+图片对应源文件 : Interactions_compare_barplot
+<font size="5">[pdf](./Interactions_compare_barplot.pdf) /
+[png](./Interactions_compare_barplot.png)</font>
+
+### 细胞通信数量与强度差异热图
+
+-   热图颜色深浅代表信号数量和强度组间对比，红色代表`r params$Group1`组相比`r params$Group2`组增加，蓝色代表`r params$Group1`组相比`r params$Group2`组减少。上方的柱状图分别表示每个亚群接收到的信号数量 / 强度变化的总和。右侧的柱状图分别表示每个亚群发出的信号数量 / 强度变化的总和。
+
+```{r echo=FALSE, out.width="100%"}
+tryCatch({
+  knitr::include_graphics("./Interactions_diff_heatmap.png")
+}, error = function(e) {
+  cat("")  # 空输出，完全隐藏错误
+})
+```
+
+图片对应源文件 : Interactions_diff_heatmap
+<font size="5">[pdf](./Interactions_diff_heatmap.pdf) /
+[png](./Interactions_diff_heatmap.png)</font>
+
+### 细胞通信数量与强度差异环图
+
+-   外周圆圈的线条粗细表示细胞内互作信号数量和强度组间对比，红色代表`r params$Group1`组相比`r params$Group2`组增加，蓝色代表`r params$Group1`组相比`r params$Group2`组减少。发出箭头的细胞表达配体，箭头指向的细胞表达受体。配体-受体数量 / 强度越大，线越粗。
+
+```{r echo=FALSE, out.width="100%"}
+tryCatch({
+  knitr::include_graphics("./Interactions_diff_netplot.png")
+}, error = function(e) {
+  cat("")  # 空输出，完全隐藏错误
+})
+```
+
+参考文件15 : Interactions_diff_netplot
+<font size="5">[pdf](./Interactions_diff_netplot.pdf) /
+[png](./Interactions_diff_netplot.png)</font>
+
+## 细胞信号模式及特异性通路可视化
+
+### 细胞类型相关传入互作信号热图
+
+-   热图颜色深浅代表信号通路从其他细胞类型传入细胞互作强度。顶部彩色条为汇总每个细胞类型热图中所有信号通路的总信号强度，右侧灰色条汇总每个信号通路热图中所有细胞类型的强度。
+
+```{=html}
+<style>
+.container {
+  overflow-y: scroll !important; /* 添加 Y 轴滚动条 */
+  max-height: 600px; /* 设置最大高度 */
+  width: 100%; /* 设置宽度 */
+}
+</style>
+```
+
+::: container
+<img src="./incoming.png" style="width: 100%; height: auto;"/>
+:::
+
+图片对应源文件 : test_incoming <font size="5">[pdf](./incoming.pdf)/
+[png](./incoming.png)</font>
+
+### 细胞类型相关传出互作信号热图
+
+-   热图颜色深浅代表信号通路从细胞类型传出细胞互作强度。顶部彩色条为汇总每个细胞类型热图中所有信号通路的总信号强度，右侧灰色条汇总每个信号通路热图中所有细胞类型的强度。
+
+```{=html}
+<style>
+.container {
+  overflow-y: scroll !important; /* 添加 Y 轴滚动条 */
+  max-height: 600px; /* 设置最大高度 */
+  width: 100%; /* 设置宽度 */
+}
+</style>
+```
+
+::: container
+<img src="./outgoing.png" style="width: 100%; height: auto;"/>
+:::
+
+图片对应源文件 : outgoing <font size="5">[pdf](./outgoing.pdf) /
+[png](./outgoing.png)</font>
+
+## 信号通路组间信息流 {.tabset .tabset-fade .tabset-pills}
+
+  信息流由推断通讯网络中所有细胞组间的通信概率之和（即网络中的总权重）定义）
+  对重要的信号通路进行排序。红色的信号通路代表`r params$Group1`组中富集，蓝色的信号通路代表在 `r params$Group2`组中富集，黑色的信号通路代表富集程度组间无显著差异。
+
+### 信号通路强度组间信息流
+
+-   信号通路组间相对信息流堆叠柱状图
+
+```{=html}
+<style>
+.container {
+  overflow-y: scroll !important; /* 添加 Y 轴滚动条 */
+  max-height: 600px; /* 设置最大高度 */
+  width: 100%; /* 设置宽度 */
+}
+</style>
+```
+
+::: container
+<img src="./Relative_Weight_information_flow.png" style="width: 80%; height: auto;"/>
+:::
+
+图片对应源文件 : Relative_Weight_information_flow
+<font size="5">[pdf](./Relative_Weight_information_flow.pdf) /
+[png](./Relative_Weight_information_flow.png)</font>
+
+------------------------------------------------------------------------
+
+-   信号通路组间信息流柱状图
+
+```{=html}
+<style>
+.container {
+  overflow-y: scroll !important; /* 添加 Y 轴滚动条 */
+  max-height: 600px; /* 设置最大高度 */
+  width: 100%; /* 设置宽度 */
+}
+</style>
+```
+
+::: container
+<img src="./Weight_Information_flow.png" style="width: 80%; height: auto;"/>
+:::
+
+图片对应源文件 : Weight_Information_flow
+<font size="5">[pdf](./Weight_Information_flow.weight.pdf) /
+[png](./Weight_Information_flow.png)</font>
+
+### 信号通路数量组间信息流
+
+-   信号通路组间相对信息流堆叠柱状图
+
+```{=html}
+<style>
+.container {
+  overflow-y: scroll !important; /* 添加 Y 轴滚动条 */
+  max-height: 600px; /* 设置最大高度 */
+  width: 100%; /* 设置宽度 */
+}
+</style>
+```
+
+::: container
+<img src="./Relative_Number_information_flow.png" style="width: 80%; height: auto;"/>
+:::
+
+图片对应源文件 : Relative_Number_information_flow
+<font size="5">[pdf](./Relative_Number_information_flow.pdf) /
+[png](./Relative_Number_information_flow.png)</font>
+
+------------------------------------------------------------------------
+
+-   信号通路组间信息流柱状图
+
+```{=html}
+<style>
+.container {
+  overflow-y: scroll !important; /* 添加 Y 轴滚动条 */
+  max-height: 600px; /* 设置最大高度 */
+  width: 100%; /* 设置宽度 */
+}
+</style>
+```
+
+::: container
+<img src="./Number_Information_flow.png" style="width: 80%; height: auto;"/>
+:::
+
+图片对应源文件 : Number_Information_flow
+<font size="5">[pdf](./Number_Information_flow.weight.pdf) /
+[png](./Number_Information_flow.png)</font>
+
+# 参考文献
+
+[1] [CellChat v2]：Suoqin Jin et al., CellChat for systematic analysis
+of cell–cell communication from single-cell transcriptomics, Nature
+Protocols 2024
+
+[2] [CellChat v2]：<https://github.com/jinworks/CellChat>

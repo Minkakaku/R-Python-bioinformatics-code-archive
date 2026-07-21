@@ -1,0 +1,311 @@
+### 4.6 组间差异显著性分析
+
+#### 4.6.1 ANOVA检验
+
+&emsp;&emsp;ANOVA（Analysis of Variance，即：方差分析）又称F检验（F-test）。主要用于检验多组样本的均值是否相等，从而判断两组或两组以上样本的均值差异显著程度。各比较组在各分类水平下的ANOVA检验结果如下表所示（显著性前20）：
+
+##### {- .toc-ignore .tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$anova_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+for (contrast in sort_contrast_list) {
+  for (level in c("Phylum", "Class", "Order", "Family", "Genus", "Species")) {
+    anova_results <- file.path(params$anova_dir, contrast, glue("{contrast}.{level}.anova.xls"))
+    anova_results_df <- read.table(
+      anova_results,
+      header = T,
+      row.names = NULL,
+      na.strings = c("NA"),
+      sep = "\t",
+      comment.char = "#",
+      check.names = F
+    )
+    if (nrow(anova_results_df) > 20) {
+      anova_results_df <- anova_results_df[1:20,]
+    }
+
+    js <- c(
+      "function(thead, data, start, end, display) {",
+      "  $('th', thead).css({'background-color': '#377EB8', 'color': 'white'});",
+      "}"
+    )
+
+    cat("###### ", contrast, " - ", level, " \n")
+    cat("\n")
+    cat("<center>**表4.6.1-1 ANOVA检验结果（显著性前20）统计表**</center>", " \n")
+    cat(knitr::knit_print(DT::datatable(
+      anova_results_df,
+      class = "hover cell-border order-column stripe",
+      rownames = FALSE,
+      extensions = c("Scroller", "FixedColumns", "Buttons"),
+      option = list(
+        scrollX = TRUE,
+        fixedColumns = list(leftColumns = 1),
+        pageLength = 5,
+        dom = 'Blfrtip',
+        buttons = c('copy', 'excel', 'print'),
+        columnDefs = list(list(className = 'dt-center', targets = "_all")),
+        headerCallback = JS(js)
+      )
+    )))
+    cat(glue("<center>**说明** 第一列为物种分类；第二列为完整物种分类信息；最后三列分别为检验P值、校正错误发现率（FDR）P值、检验方法；中间各列为各组的相对丰度均值以及标准差。</center>"), "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+  }
+}
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;提取显著差异（p值小于0.05）的物种结果进行柱状图展示（显著性前20），如果没有p值小于0.05的物种结果，则取显著性前5显著的结果：
+
+##### {- .toc-ignore .tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$anova_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+for (contrast in sort_contrast_list) {
+  for (level in c("Phylum", "Class", "Order", "Family", "Genus", "Species")) {
+    pic <- file.path(params$anova_dir, contrast, glue("{contrast}.{level}.anova.png"))
+    cat("###### ", contrast, " - ", level, " \n")
+    cat("\n")
+    cat("![](", pic, "){width=70%}", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**图4.6.1-1 ANOVA检验结果柱状图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 横坐标表示物种；纵坐标表示物种的相对丰度；不同颜色的柱子代表不同分组。</center>", "\n")
+    cat("<center>&nbsp;<center>", "\n")
+    cat("\n")
+  }
+}
+
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- ANOVA检验结果统计表：results/06.taxonomic_biomarker/anova/\*/\*.anova.xls；
+- ANOVA检验结果柱状图：results/06.taxonomic_biomarker/anova/\*/\*.anova.{pdf,png}。
+
+&nbsp;
+
+#### 4.6.2 秩和检验
+
+&emsp;&emsp;秩和检验（Rank-sum test）是非参数检验的一种方法。其中“秩”又称等级、即上述次序号的和称“秩和”，秩和检验就是用秩和作为统计量进行假设检验的方法。当在实践中遇到总体分布类型未知；或者总体分布类型已知但不符合正态分布；或者某些变量可能无法精确测量；以及方差不齐时，即可采用秩和检验进行分析。针对不同样本会采用不同的分析方法：两组样本采用Wilcoxon秩和检验，多组（三组或三组以上）样本采用Kruskal-Wallis秩和检验。各分类水平秩和检验分析结果如下表所示（显著性前20）:
+
+##### {- .toc-ignore .tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$rank_sum_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+for (contrast in sort_contrast_list) {
+  for (level in c("Phylum", "Class", "Order", "Family", "Genus", "Species")) {
+    rank_sum_results <- file.path(params$rank_sum_dir, contrast, glue("{contrast}.{level}.rank_sum.xls"))
+    rank_sum_results_df <- read.table(
+      rank_sum_results,
+      header = T,
+      row.names = NULL,
+      na.strings = c("NA"),
+      sep = "\t",
+      comment.char = "#",
+      check.names = F
+    )
+    if (nrow(rank_sum_results_df) > 20) {
+      rank_sum_results_df <- rank_sum_results_df[1:20,]
+    }
+
+    js <- c(
+      "function(thead, data, start, end, display) {",
+      "  $('th', thead).css({'background-color': '#377EB8', 'color': 'white'});",
+      "}"
+    )
+
+    cat("###### ", contrast, " - ", level, " \n")
+    cat("\n")
+    cat("<center>**表4.6.2-1 秩和检验结果（显著性前20）统计表**</center>", " \n")
+    cat(knitr::knit_print(DT::datatable(
+      rank_sum_results_df,
+      class = "hover cell-border order-column stripe",
+      rownames = FALSE,
+      extensions = c("Scroller", "FixedColumns", "Buttons"),
+      option = list(
+        scrollX = TRUE,
+        fixedColumns = list(leftColumns = 1),
+        pageLength = 5,
+        dom = 'Blfrtip',
+        buttons = c('copy', 'excel', 'print'),
+        columnDefs = list(list(className = 'dt-center', targets = "_all")),
+        headerCallback = JS(js)
+      )
+    )))
+    cat(glue("<center>**说明** 第一列为物种分类；第二列为完整物种分类信息；最后三列分别为检验P值、校正错误发现率（FDR）P值、检验方法；中间各列为各组的相对丰度均值以及标准差。</center>"), "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+  }
+}
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;提取显著差异（p值小于0.05）的物种结果进行柱状图展示（显著性前20），如果没有p值小于0.05的物种结果，则取显著性前5显著的结果：
+
+##### {- .toc-ignore .tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$rank_sum_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+for (contrast in sort_contrast_list) {
+  for (level in c("Phylum", "Class", "Order", "Family", "Genus", "Species")) {
+    pic <- file.path(params$rank_sum_dir, contrast, glue("{contrast}.{level}.rank_sum.png"))
+    cat("###### ", contrast, " - ", level, " \n")
+    cat("\n")
+    cat("![](", pic, "){width=70%}", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**图4.6.2-1 秩和检验结果柱状图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 横坐标表示物种；纵坐标表示物种的相对丰度；不同颜色的柱子代表不同分组。</center>", "\n")
+    cat("<center>&nbsp;<center>", "\n")
+    cat("\n")
+  }
+}
+
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 秩和检验结果统计表：results/06.taxonomic_biomarker/rank_sum/\*/\*.rank_sum.xls；
+- 秩和检验结果柱状图：results/06.taxonomic_biomarker/rank_sum/\*/\*.rank_sum.{pdf,png}。
+
+&nbsp;
+
+#### 4.6.3 LEfSe差异分析
+
+&emsp;&emsp;LEfSe（Line Discriminant Analysis Effect Size）<sup>[20]</sup>分析是一种将非参数的Kruskal-Wallis以及Wilcoxon秩和检验，与线性判别分析（Linear discriminant analysis，LDA）效应量（Effect size）相结合的分析手段, 能够在不同组间寻找具有统计学差异的Biomarker。
+
+&emsp;&emsp;LEfSe分析首先使用non-parametric factorial Kruskal-Wallis（KW）sum-rank test（非参数因子克鲁斯卡尔—沃利斯秩和验检）检测具有显著丰度差异特征，并找到与丰度有显著性差异的类群，然后采用线性判别分析（LDA）来估算每个组分（物种）丰度对差异效果影响的大小。结果包含差异结果统计表、差异物种LDA值分布柱状图、差异物种进化分支图。下表为差异结果统计表（在组间具有显著差异的结果，本次LEfSe分析差异筛选阈值：**LDA值 > `r params$lefse_lda_cutoff`, 检验P值 < `r params$lefse_p_cutoff`**）：
+
+##### {- .toc-ignore .tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$lefse_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+for (contrast in sort_contrast_list) {
+  lefse_results <- file.path(params$lefse_dir, contrast, glue("{contrast}.LEfSe.results.significant.xls"))
+  lefse_results_df <- read.table(
+    lefse_results,
+    header = T,
+    row.names = NULL,
+    na.strings = c("NA"),
+    sep = "\t",
+    comment.char = "#",
+    check.names = F
+  )
+  colnames(lefse_results_df) <- c("Biomarker_names", "Logarithm_value", "Groups", "LDA_scores", "P_values")
+  lefse_results_df <- lefse_results_df %>%
+    dplyr::filter(Groups != "") %>%
+    dplyr::arrange(desc(LDA_scores))
+
+  js <- c(
+    "function(thead, data, start, end, display) {",
+    "  $('th', thead).css({'background-color': '#377EB8', 'color': 'white'});",
+    "}"
+  )
+
+  cat("###### ", contrast, " \n")
+  cat("\n")
+  cat("<center>**表4.6.3-1 LEfSe分析差异结果统计表**</center>", " \n")
+  cat(knitr::knit_print(DT::datatable(
+    lefse_results_df,
+    class = "hover cell-border order-column stripe",
+    rownames = FALSE,
+    extensions = c("Scroller", "FixedColumns", "Buttons"),
+    colnames = c("Biomarker_name", "Logarithm_value", "Group", "LDA_score", "P_value"),
+    option = list(
+      scrollX = TRUE,
+      pageLength = 5,
+      dom = 'Blfrtip',
+      buttons = c('copy', 'excel', 'print'),
+      columnDefs = list(list(className = 'dt-center', targets = "_all")),
+      headerCallback = JS(js)
+    )
+  )))
+  cat(glue("<center>**说明** 第一列为物种名，后四列分别为各分类单元的最高组内相对丰度均值（为对数转换值，第二列），其对应的分组名（第三列）、LDA值（第四列）以及检验P值（第五列）。通常可根据第四列的LDA值和第五列的检验P值，找出组间具有显著差异的标志物种。</center>"), "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("\n")
+}
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;根据筛选出的显著差异物种（**LDA值 > `r params$lefse_lda_cutoff`, 检验P值 < `r params$lefse_p_cutoff`**）所做的差异物种进化分支图如下：
+
+##### {- .toc-ignore .tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$lefse_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+for (contrast in sort_contrast_list) {
+  pic <- file.path(params$lefse_dir, contrast, glue("{contrast}.LEfSe.cladogram.png"))
+  cat("###### ", contrast, " \n")
+  cat("\n")
+  cat("![](", pic, "){width=70%}", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**图4.6.3-1 LEfSe分析差异物种进化分支图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** 进化分支图由内至外辐射的圆圈代表了由门至种的分类级别；在不同分类级别上的每一个小圆圈代表 该水平下的一个分类，小圆圈直径大小与相对丰度大小呈正比；着色原则为将无显著差异的物种统一着色为黄色，其他差异物种按该物种所在丰度最高的分组进行着色。不同颜色表示不同分组，不同颜色的节点表示在该颜色所代表的分组中起到重要作用的微生物群。</center>", "\n")
+  cat("<center>&nbsp;<center>", "\n")
+  cat("\n")
+}
+
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;根据筛选出的显著差异物种（**LDA值 > `r params$lefse_lda_cutoff`, 检验P值 < `r params$lefse_p_cutoff`**）所做的差异物种LDA值分布柱状图如下：
+
+##### {- .toc-ignore .tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- list.files(params$lefse_dir)
+sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+for (contrast in sort_contrast_list) {
+  pic <- file.path(params$lefse_dir, contrast, glue("{contrast}.LEfSe.barplot.png"))
+  cat("###### ", contrast, " \n")
+  cat("\n")
+  cat("![](", pic, "){width=60%}", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**图4.6.3-2 LEfSe分析差异物种LDA值分布柱状图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** 纵坐标为组间具有显著差异的分类单元，横坐标则以条形图直观地展示各分类单元的LDA分析对数得分值。分类单元按照得分值大小进行排序，长度越长表明该分类单元的差异越显著，条形图的颜色指示了该分类单元对应丰度较高的样本分组。</center>", "\n")
+  cat("<center>&nbsp;<center>", "\n")
+  cat("\n")
+}
+
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- LEfSe分析差异结果统计表（所有结果）：results/06.taxonomic_biomarker/LEfSe/\*/\*.LEfSe.results.all.xls；
+- LEfSe分析差异结果统计表（显著差异结果）：results/06.taxonomic_biomarker/LEfSe/\*/\*.LEfSe.results.significant.xls；
+- LEfSe分析差异物种进化分支图：results/06.taxonomic_biomarker/LEfSe/\*/\*.LEfSe.cladogram.{pdf,png}；
+- LEfSe分析差异物种LDA值分布柱状图：results/06.taxonomic_biomarker/LEfSe/\*/\*.LEfSe.barplot.{pdf,png}。

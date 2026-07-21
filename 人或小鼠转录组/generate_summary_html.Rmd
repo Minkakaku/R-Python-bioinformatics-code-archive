@@ -1,0 +1,2469 @@
+---
+params:
+  project_name: "广科安德转录组测序技术服务"
+  project_number: "demo"
+  customer_name: "demo"
+  customer_unit: "demo"
+  logo_pic: "../../resources/summary_report/logo.png"
+  experiment_pipeline_pic: "../../resources/summary_report/experiment_pipeline.png"
+  analysis_pipeline_pic: "../../resources/summary_report/analysis_pipeline.png"
+  meta_data_file: "../../config/metadata.tsv"
+  fastq_qc_plot_dir: "../../results/01.data_clean/qc_plot"
+  fastp_qc_stats: "../../results/01.data_clean/all_fastp_stats.xls"
+  ref_genome: "Homo sapiens GRCh38 release-109"
+  ref_genome_download: "https://ftp.ensembl.org/pub/release-84/fasta/homo_sapiens/"
+  map_stats: "../../results/02.alignment_count/all_alignment_stats.xls"
+  hisat2_dir: "../../results/02.alignment_count/hisat2"
+  library_assessment_dir: "../../results/03.library_assessment"
+  featureCounts_merged: "../../results/02.alignment_count/featureCounts/featureCounts_merged_count.tsv"
+  fpkm_merged: "../../results/02.alignment_count/fpkm/fpkm_merged_count.tsv"
+  fpkm_boxplot: "../../results/02.alignment_count/fpkm/fpkm_boxplot.png"
+  fpkm_heatmap: "../../results/02.alignment_count/fpkm/fpkm_heatmap.png"
+  fpkm_pca: "../../results/02.alignment_count/fpkm/fpkm_pca.png"
+  diffexp_FC: 1.5
+  diffexp_p_criteria: "padj < 0.05"
+  diffexp_dir: "../../results/04.diffexp_analysis"
+  diffexp_stats: "../../results/04.diffexp_analysis/all_diffexp_stats.tsv"
+  diffexp_stats_barplot: "../../results/04.diffexp_analysis/all_diffexp_stats_barplot.png"
+  enrich_principle_pic: "../../resources/summary_report/enrich_principle.png"
+  enrich_dir: "../../results/05.enrich_analysis"
+  pathview_example_pic: "../../resources/summary_report/pathview_example.png"
+  rmats_events_pic: "../../resources/summary_report/rmats_events.jpg"
+  rmats_fdr_cutoff: 0.05
+  rmats_diff_cutoff: 0.02
+  rmats_diff_stats: "../../results/06.alternative_splicing/diff_alternative_splicing_stats.xls"
+  rmats2sashimiplot_example_plot: "../../resources/summary_report/rmats2sashimiplot_example_plot.png"
+  var_dir: "../../results/07.variants"
+  gene_fusion_description_pic: "../../resources/summary_report/gene_fusion_description.png"
+  fusion_results_dir: "../../results/08.gene_fusion/star_fusion"
+  tf_dir: "../../results/09.transcription_factor"
+  cuffcmp_gtf: "../../results/10.novel_transcript/cuffcmp.combined.gtf"
+  cuffcmp_novel_gene: "../../results/10.novel_transcript/optimized.gene.xls"
+  dexseq_padj_cutoff: 0.01
+  dexseq_dir: "../../results/11.diff_exon_uasge"
+  dexseq_example_pic: "../../resources/summary_report/dexseq_plot_example.png"
+  recomend_params_table: "../../results/04.diffexp_analysis/Recommend.params.txt"
+
+title: | 
+  <center><br></center>
+  <center><br></center>
+  <center><br></center>
+  <center>广科安德医学转录组分析报告</center>
+  <center><br></center>
+author: 
+  - "项目名称：`r params$project_name`"
+  - "项目编号：`r params$project_number`"
+  - "客户姓名：`r params$customer_name`"
+  - "客户单位：`r params$customer_unit`"
+  - "公司官网：[www.cwmda.com](https://www.cwmda.com/)"
+  - "售后电话：86-571-83693553"
+date: "报告时间：`r format(Sys.time(), '%Y年%m月%d日')`"
+output:
+  html_document:
+    # css: background.css
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    toc_depth: 4
+    theme: cerulean
+    highlight: tango
+  pdf_document:
+    toc: true
+    toc_depth: '5'
+---
+
+<style type ="text/css">
+#TOC {
+  margin-left: 20px;
+  margin-right: 20px;
+}
+
+.main-container {
+  max-width: 100% !important; 
+  margin-left: 0px;
+  margin-right: 50px;
+}
+td { /* Table  */
+  font-size: 15px; 
+  text-align: center; 
+  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+}
+th {
+  font-size: 15px; 
+  text-align: center; 
+  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";     
+  font-weight: 600;
+}
+h1.title {
+  font-size: 32px;
+  color: #00008B;
+}
+h1 {
+  font-size: 25px; 
+  font-weight: 600; 
+  color: #00008B; 
+  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+}
+h2 {
+  font-size: 22px; 
+  font-weight: 600; 
+  color: #00008B; 
+  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+}
+h3 {
+  font-size: 20px; 
+  font-weight: 400; 
+  color: #377EB8; 
+  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+}
+h4 {
+  font-size: 18px; 
+  font-weight: 400; 
+  color: #377EB8; 
+  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+}
+h4.author {
+  font-size: 16px;
+  color: Black;
+  font-weight: normal;
+  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+}
+h4.date {
+  font-size: 16px;
+  color: Black;
+  font-weight: normal;
+  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+}
+h5 {
+  line-height: 200%;  
+  font-weight: 400;  
+  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+}
+h6 {
+  font-size: 15px; 
+  font-weight: 400; 
+  color: #377EB8; 
+  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";
+}
+img {
+  margin-left: auto;    
+  margin-right:auto;    
+  display:block;
+}
+p {
+  line-height: 180%;    
+  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";     
+  text-align: justify;    
+  font-size: 15px;
+}
+ul {
+  line-height: 180%;    
+  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";     
+  text-align: justify;    
+  font-size: 15px;
+}
+</style>
+
+<style>
+.nav-tabs > li.active > a {
+  font-weight: bold;
+  font-size: 18px;
+  color: #377EB8;
+}
+</style>
+
+
+```{r load packages, echo = FALSE, message = FALSE, warning = FALSE}
+library(htmltools)
+library(DT)
+library(dplyr)
+library(glue)
+library(kableExtra)
+```
+```{r echo=FALSE}
+htmltools::img(
+  src = knitr::image_uri(params$logo),   alt = 'logo', 
+  style = 'position:absolute; top:0; right:0; padding:10px; width:240px'
+)
+
+```
+
+***
+
+&nbsp;
+
+## 摘要
+
+***
+
+```{r, echo=FALSE, warning=FALSE, results='asis'}
+
+fastp_qc_stats_df <- read.table(params$fastp_qc_stats, 
+                                sep="\t",
+                                header=TRUE)
+clean_data_bp <- as.numeric(gsub("G", "", fastp_qc_stats_df$clean_data_bp))
+clean_data_bp_sum <- sum(clean_data_bp)
+clean_data_bp_min <- min(clean_data_bp)
+
+clean_data_q30 <- as.numeric(gsub("%", "", fastp_qc_stats_df$clean_data_q30))
+clean_data_q30_min <- min(clean_data_q30)
+
+map_stats_df <- read.table(params$map_stats, 
+                           sep="\t",
+                           header=TRUE)
+total_map_percent <- as.numeric(gsub(".*\\((.*)%\\)", "\\1", map_stats_df$Total_Map))
+total_map_percent_max <- max(total_map_percent)
+total_map_percent_min <- min(total_map_percent)
+
+if (params$diffexp_p_criteria == "auto" & params$diffexp_FC == "auto") {
+  criteria_df <- read.table(params$recomend_params_table, 
+                           sep="\t",
+                           header=TRUE)
+  p_type <- criteria_df$p_type[1]
+  fc_cutoff <- as.numeric(criteria_df$fc[1])
+  diffexp_criteria <- glue("|FoldChange| > {fc_cutoff} & {p_type} < 0.05")
+} else if (params$diffexp_p_criteria == "auto" & params$diffexp_FC != "auto") {
+  criteria_df <- read.table(params$recomend_params_table, 
+                           sep="\t",
+                           header=TRUE)
+  p_type <- criteria_df$p_type[1]
+  fc_cutoff <- as.numeric(params$diffexp_FC)
+  diffexp_criteria <- glue("|FoldChange| > {fc_cutoff} & {p_type} < 0.05")
+} else if (params$diffexp_p_criteria != "auto" & params$diffexp_FC == "auto") {
+  criteria_df <- read.table(params$recomend_params_table, 
+                           sep="\t",
+                           header=TRUE)
+  fc_cutoff <- as.numeric(criteria_df$fc[1])
+  diffexp_criteria <- glue("|FoldChange| > {fc_cutoff} & {params$diffexp_p_criteria}")
+} else if (params$diffexp_p_criteria != "auto" & params$diffexp_FC != "auto") {
+  fc_cutoff <- as.numeric(params$diffexp_FC)
+  diffexp_criteria <- glue("|FoldChange| > {fc_cutoff} & {params$diffexp_p_criteria}")
+}
+
+metadata <- read.table(params$meta_data_file, 
+                       header=TRUE,
+                       sep="\t")
+group_list <- unique(metadata[["group"]])
+sample_list <- c()
+for (g in group_list) {
+  samples <- paste(metadata[metadata$group==g,][["sample"]], collapse = ", ")
+  sample_list <- append(sample_list, samples)
+}
+metadata_df <- data.frame(Group = group_list,
+                          Sample = sample_list)
+n_samples <- length(metadata[["sample"]])
+
+cat("&emsp;&emsp;分析结果概述：", "\n")
+cat("\n")
+
+cat(glue('&emsp;&emsp;（1）完成 <span style="color:#377EB8">**{n_samples}**</span> 个样本的转录组（RNA-seq）分析，共获得 <span style="color:#377EB8">**{clean_data_bp_sum}Gb**</span> Clean Data，各样本Clean Data均达到 <span style="color:#377EB8">**{clean_data_bp_min}Gb**</span> 以上，Q30百分比均达到 <span style="color:#377EB8">**{clean_data_q30_min}%**</span> 以上。本次实验样本及分组信息如下:'), "\n")
+cat("\n")
+
+row_odd <- c()
+row_even <- c()
+for (i in 1:nrow(metadata_df)) {
+  if ((i %% 2) == 0) {
+    row_even <- c(row_even, i)
+  } else {
+    row_odd <- c(row_odd, i)
+  }
+}
+kbl(metadata_df, align='c', col.names = c("分组", "样本")) %>%
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "center") %>%
+  row_spec(0, bold = T, color = "white", background = "#377EB8", extra_css = "border-width:0px;") %>%
+  row_spec(row_odd, background = "#EBF5FF", extra_css = "border-width:0px;vertical-align: middle !important;") %>%
+  row_spec(row_even, background = "#D2E4FC", extra_css = "border-width:0px;vertical-align: middle !important;") %>%
+  column_spec(1:2, width = "8cm")
+
+cat(glue('&emsp;&emsp;（2）分别将各样本的Clean Reads与指定的参考基因组（<span style="color:#377EB8">**{params$ref_genome}**</span>）进行序列比对，比对率从 <span style="color:#377EB8">**{total_map_percent_min}%**</span> 到 <span style="color:#377EB8">**{total_map_percent_max}%**</span> 不等。基于比对结果，进行可变剪接分析、变异位点分析和基因融合分析等模块的分析，详细结果请参考“分析结果”。'), "\n")
+cat("\n")
+
+cat(glue('&emsp;&emsp;（3）在本项目中，<span style="color:#377EB8">**{diffexp_criteria}**</span> 作为差异表达基因筛选标准。在设置的各个比较组中，进行基因差异表达分析、差异表达基因功能富集分析、GSEA分析、蛋白互作网络分析等模块的分析，详细结果请参考“分析结果”。'), "\n")
+cat("\n")
+
+```
+
+&nbsp;
+
+<div style= "float:left;width:80px">
+```{r echo=FALSE}
+knitr::include_graphics(params$logo)
+```
+</div>
+
+<p style="text-align:right;line-height:0%;"><font size="1">
+杭州广科安德生物科技有限公司
+</font></p>
+
+***
+
+&nbsp;
+
+## 1. 背景介绍
+
+***
+
+&emsp;&emsp;转录组是指特定组织或细胞在某个时间或某个状态下转录出来的所有RNA的总和，主要包括mRNA和⾮编码RNA。在遗传中心法则中，mRNA是连接基因组遗传信息与生物功能的蛋白质组的必然纽带，处于重要的中央枢纽地位。基于Illumina测序平台的转录组测序技术（RNA-seq）能够全面快速地获得某一物种特定组织或器官在某一状态下所转录的mRNA序列信息，从整体水平研究基因表达量以及基因结构，揭示特定生物学过程中的分子机理。转录组研究是基因功能及结构研究的基础和出发点，现已广泛应用于生长发育、非生物胁迫、免疫互作、突变表型、临床诊断、药物研发和分子育种等领域<sup>[1]</sup>。
+
+&nbsp;
+
+<div style= "float:left;width:80px">
+```{r echo=FALSE}
+knitr::include_graphics(params$logo)
+```
+</div>
+
+<p style="text-align:right;line-height:0%;"><font size="1">
+杭州广科安德生物科技有限公司
+</font></p>
+
+***
+
+&nbsp;
+
+## 2. 项目流程
+
+***
+
+### 2.1 实验流程
+
+&emsp;&emsp;RNA-seq实验流程包括样品检测、文库构建及质检和上机测序。RNA-seq是基于Illumina Novaseq 6000 测序平台，对真核生物特定组织或细胞在某个时期转录出来的所有mRNA进行测序，测序实验采用Illumina TruseqTM RNA sample prep Kit方法进行文库构建，其操作流程如下图所示：
+
+```{r echo=FALSE, out.width="20%", fig.align="center"}
+knitr::include_graphics(params$experiment_pipeline_pic)
+```
+
+<center>**图2-1 实验流程图**</center>
+
+<center>&nbsp;</center>
+
+#### 2.1.1 提取Total RNA
+
+&emsp;&emsp;从组织样品中提取total RNA，利用Nanodrop2000对所提RNA的浓度和纯度进行检测，琼脂糖凝胶电泳检测RNA完整性，Agilent2100测定RIN值。单次建库要求RNA总量≥1ug，浓度≥35ng/μL，OD260/280≥1.8，OD260/230≥1.0。
+
+#### 2.1.2 Oligo dT富集mRNA
+
+&emsp;&emsp;真核生物mRNA 3'末端具有ployA尾的结构，利用带有Oligo（dT）的磁珠与ployA进行A-T碱基配对，可以从总RNA中分离出mRNA，用于分析转录组信息。
+
+#### 2.1.3 片段化mRNA
+
+&emsp;&emsp;Illumina Novaseq 6000平台是针对短序列片段进行测序，富集得到的mRNA是完整的RNA序列，平均长度达几kb，因此需要对其进行随机打断。加入fragmentation buffer，可以将mRNA随机断裂，通过磁珠筛选分离出300bp左右的小片段。
+
+#### 2.1.4 反转合成cDNA
+
+&emsp;&emsp;在逆转录酶的作用下，加入六碱基随机引物（random hexamers），以mRNA为模板反转合成一链cDNA，随后进行二链合成，形成稳定的双链结构。
+
+#### 2.1.5 连接Adaptor
+
+&emsp;&emsp;双链的cDNA结构为粘性末端，加入End Repair Mix将其补成平末端，随后在3’末端加上一个“A”碱基，用于连接Y字形的接头。
+
+#### 2.1.6 Illumina平台上机测序
+
+&emsp;&emsp;1) 文库富集，PCR扩增15个cycles；
+
+&emsp;&emsp;2) 2%琼脂糖胶回收目的条带；
+
+&emsp;&emsp;3) TBS380（Picogreen）定量，按数据比例混合上机；
+
+&emsp;&emsp;4) cBot上进行桥式PCR扩增，生成clusters；
+
+&emsp;&emsp;5) Illumina 平台测序（PE文库，读长2×150bp）。
+
+&nbsp;
+
+<div style= "float:left;width:80px">
+```{r echo=FALSE}
+knitr::include_graphics(params$logo)
+```
+</div>
+
+<p style="text-align:right;line-height:0%;"><font size="1">
+杭州广科安德生物科技有限公司
+</font></p>
+
+***
+
+&nbsp;
+
+### 2.2 分析流程
+
+&emsp;&emsp;RNA-seq的核心是基因表达差异的显著性分析，使用统计学方法，比较两个条件或多个条件下的基因表达差异，从中找出与条件相关的特异性基因，然后进一步分析这些特异性基因的生物学意义，分析过程包括质控、比对、定量、差异显著性分析、功能富集等环节。生信分析流程如下图所示：
+
+```{r echo=FALSE, out.width="50%", fig.align="center"}
+knitr::include_graphics(params$analysis_pipeline_pic)
+```
+
+<center>**图2-2 分析流程图**</center>
+
+&nbsp;
+
+<div style= "float:left;width:80px">
+```{r echo=FALSE}
+knitr::include_graphics(params$logo)
+```
+</div>
+
+<p style="text-align:right;line-height:0%;"><font size="1">
+杭州广科安德生物科技有限公司
+</font></p>
+
+***
+
+&nbsp;
+
+## 3. 分析结果
+
+***
+
+### 3.1 测序数据质控
+
+#### 3.1.1 测序数据说明
+
+&emsp;&emsp;Illumina高通量测序平台对cDNA文库进行测序，产出大量的高质量Data，称为原始数据（Raw Data）。测序片段被高通量测序仪测得的图像数据经CASAVA碱基识别转化为序列数据（reads），文件为fastq格式，其中主要包含测序片段的序列信息以及其对应的测序质量信息。
+
+&emsp;&emsp;fastq格式文件中每个read由四行描述信息组成，如下所示：
+
+&emsp;&emsp;&emsp;**@A01927:53:HLT5WDSX3:5:1101:6745:1924 1:N:0:ACGCTCGA**  
+&emsp;&emsp;&emsp;**CAGCTGGAAGATCGCAGGAGTACCACCGACCTGAGGGGGACCCAGTTTGACTATTGG**  
+&emsp;&emsp;&emsp;**+**  
+&emsp;&emsp;&emsp;**AA&lt-FFFFFF&ltJJFFJJFJJJ&ltFJJJJJJJJFJJJJFJJJJJAFJ7FJJJJ**
+
+&emsp;&emsp;上述文件中第一行以“@”开头，随后为Illumina测序标识符(Squence Identifiers)和描述文字；第二行是测序片段的碱基序列；第三行以“+”开头，随后为Illumina测序标识符(也可为空)；第四行是测序片段每个碱基相对应的测序质量值，该行中每个字符对应的ASCII值减去33，即为该碱基的测序质量值。
+
+&nbsp;
+
+#### 3.1.2 测序错误率分布 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;测序过程本身存在机器错误的可能性，测序错误率分布检查可以反映测序数据的质量，序列信息中每个碱基的测序质量值保存在fastq文件中。如果测序错误率用e<sup>[2]</sup>表示，Illumina的碱基质量值用Q<sub>phred</sub>表示，则有：
+
+$$
+\begin{aligned}
+ Q_{phred} = -10 * \log_{10} e
+\end{aligned}
+$$
+
+&emsp;&emsp;Illumina Casava 1.8版本碱基识别与Phred分值之间的简明对应关系见下表:
+
+<center>**表3-1 Illumina Casava 1.8版本碱基识别与Phred分值之间的简明对应关系**</center>
+
+<center>
+<style type="text/css">
+.tg  {border-collapse:collapse;border-color:#9ABAD9;border-spacing:0;}
+.tg td{background-color:#EBF5FF;border-color:#9ABAD9;border-style:solid;border-width:0px;color:#444;
+  font-family:Arial, sans-serif;font-size:14px;overflow:hidden;padding:10px 20px;word-break:normal;}
+.tg th{background-color:#377EB8;border-color:#9ABAD9;border-style:solid;border-width:0px;color:#fff;
+  font-family:Arial, sans-serif;font-size:14px;font-weight:normal;overflow:hidden;padding:10px 20px;word-break:normal;}
+.tg .tg-1wig{font-weight:bold;text-align:left;vertical-align:top}
+.tg .tg-5cz4{background-color:#D2E4FC;border-color:inherit;text-align:center;vertical-align:middle}
+.tg .tg-baqh{text-align:center;vertical-align:top}
+.tg .tg-7btt{border-color:inherit;font-weight:bold;text-align:center;vertical-align:top}
+.tg .tg-j0tj{background-color:#D2E4FC;text-align:center;vertical-align:top}
+</style>
+<table class="tg">
+<thead>
+  <tr>
+    <th class="tg-7btt">Phred分值</th>
+    <th class="tg-7btt">碱基识别错误的概率</th>
+    <th class="tg-7btt">碱基识别精度</th>
+    <th class="tg-1wig">碱基质量值</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td class="tg-5cz4">10</td>
+    <td class="tg-5cz4">1/10</td>
+    <td class="tg-5cz4">90%</td>
+    <td class="tg-j0tj">Q10</td>
+  </tr>
+  <tr>
+    <td class="tg-baqh">20</td>
+    <td class="tg-baqh">1/100</td>
+    <td class="tg-baqh">99%</td>
+    <td class="tg-baqh">Q20</td>
+  </tr>
+  <tr>
+    <td class="tg-j0tj">30</td>
+    <td class="tg-j0tj">1/1000</td>
+    <td class="tg-j0tj">99.9%</td>
+    <td class="tg-j0tj">Q30</td>
+  </tr>
+  <tr>
+    <td class="tg-baqh">40</td>
+    <td class="tg-baqh">1/10000</td>
+    <td class="tg-baqh">99.99%</td>
+    <td class="tg-baqh">Q40</td>
+  </tr>
+</tbody>
+</table>
+</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;测序错误率受测序仪本身、测序试剂、样品等多个因素共同影响。由于测序过程中化学试剂的消耗，测序错误率会随着测序序列（Sequenced Reads）长度的增加而升高，是Illumina高通量测序平台所具有的特征。前6个碱基测序错误率较高的原因是随机引物和RNA模版的不完全结合。本项目各样本原始数据测序错误率分布图如下：
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+
+sample_list <- read.table(params$meta_data_file, header=TRUE, sep="\t")[["sample"]]
+
+for (sample in sample_list) {
+  pic <- file.path(params$fastq_qc_plot_dir, sample, paste0(sample, "_error.png"))
+  cat("##### ", sample, " \n")
+  cat("\n")
+  cat("![](", pic, "){width=50%}", "\n")
+  cat("<center>**图3-1 测序数据错误率分布图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** 图中横坐标为reads的碱基位置，纵坐标为单碱基错误率。</center>", "\n")
+  cat("<center>&nbsp;<center>", "\n")
+  cat("\n")
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 各样本测序数据错误率分布图：results/01.data_clean/qc_plot/\*/\*_error.png；
+- 各样本测序数据测序质量分布图：results/01.data_clean/qc_plot/\*/\*_quality.png。
+
+&nbsp;
+
+
+#### 3.1.3 GC含量分布 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;核苷酸序列中鸟嘌呤(G)和胞嘧啶(C)所占的比例称为GC含量，GC含量在物种间存在一定特异性。碱基GC含量分布检查用于检测有无AT、GC分离现象，由于RNA-seq所测的序列为随机打断的cDNA片段，因随机性打断及碱基互补配对原则，理论上，G和C、A和T的含量每个测序循环上应分别相等，且整个测序过程稳定不变，呈水平线。由于Reads 5’端的前几个碱基为随机引物序列会引起前几位碱基在核苷酸组成上有一定偏好性，因此会在碱基分布图前端出现波动现象。本项目各样本原始数据的GC含量分布如下图所示：
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+
+sample_list <- read.table(params$meta_data_file, header=TRUE, sep="\t")[["sample"]]
+
+for (sample in sample_list) {
+  pic <- file.path(params$fastq_qc_plot_dir, sample, paste0(sample, "_GC.png"))
+  cat("##### ", sample, " \n")
+  cat("\n")
+  cat("![](", pic, "){width=50%}", "\n")
+  cat("<center>**图3-2 GC含量分布图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** 图中横坐标为reads中的碱基位置，纵坐标为ATGCN五种碱基类型的百分比。</center>", "\n")
+  cat("<center>&nbsp;<center>", "\n")
+  cat("\n")
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 各样本GC含量分布图：results/01.data_clean/qc_plot/\*/\*_GC.png。
+
+&nbsp;
+
+#### 3.1.4 测序数据过滤和统计
+
+&emsp;&emsp;测序获得的原始数据中包含少量带有测序接头或测序质量较低的reads，为了保证数据分析的质量及可靠性，使用fastp<sup>[3]</sup>软件对原始数据进行过滤，过滤内容如下：
+
+- 去除带接头（adapter）的reads；
+- 去除含N（N表示无法确定碱基信息）的reads；
+- 去除低质量reads（Q<sub>phred</sub><=20的碱基数占整个read长度的50％以上的reads）。
+
+&emsp;&emsp;经过原始数据过滤、测序错误率检查、GC含量分布检查，获得后续分析使用的clean reads，数据汇总如下表所示:
+</font>
+
+<center>**表3-2 测序数据统计表**</center>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+fastp_qc_stats_df <- read.table(
+  params$fastp_qc_stats, 
+  header = T, 
+  na.strings = c("NA"), 
+  sep = "\t"
+)
+
+datatable(
+  fastp_qc_stats_df,
+  class = "hover cell-border order-column stripe",
+  rownames = FALSE,
+  extensions = c("Scroller", "FixedColumns", "Buttons"),
+  colnames = c("Sample", "Clean_Read_Length", "Raw_Reads",
+               "Raw_Bases", "Filtered_Percent", "Clean_Reads", 
+               "Clean_Bases", "Clean_GC", 
+               "Clean_Q20", "Clean_Q30"),
+  option = list(
+    scrollX = TRUE,
+    pageLength = 5,
+    dom = 'Blfrtip',
+    buttons = c('copy', 'excel', 'print'),
+    columnDefs = list(list(className = 'dt-center', targets = "_all")),
+    initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().header()).css({'background-color': '#377EB8', 'color': 'white'});",
+        "}")
+  )
+)
+```
+
+<center>**说明** Sample：样本名称； Clean_Read_Length：有效数据中的测序reads平均长度（bp）；Raw_Reads：原始数据中的reads数；Raw_Bases：原始数据中的碱基数（base）； Filtered_Percent：过滤掉的数据占原始数据的比例； Clean_Reads：有效数据中的reads数；Clean_Bases：有效数据中的碱基数（base）；Clean_GC：有效数据的平均GC含量百分比； Clean_Q20：有效数据中质量值大于20的碱基占总碱基的百分比； Clean Data Q30：有效数据中质量值大于30的碱基占总碱基的百分比。</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;**结果文件：**
+
+- 测序原始数据文件目录：results/00.rawdata；
+- 测序有效数据文件目录：results/01.data_clean/cleandata；
+- 测序数据质控结果汇总表：results/01.data_clean/all_fastp_stats.xls；
+- 测序数据质控结果汇总报告：results/01.data_clean/multiqc/cleandata_qc_report.html。
+
+&nbsp;
+
+<div style= "float:left;width:80px">
+```{r echo=FALSE}
+knitr::include_graphics(params$logo)
+```
+</div>
+
+<p style="text-align:right;line-height:0%;"><font size="1">
+杭州广科安德生物科技有限公司
+</font></p>
+
+***
+
+&nbsp;
+
+### 3.2 参考基因组比对
+
+&emsp;&emsp;测序片段（fragments）是mRNA随机打断的，为了确定这些一段由哪些基因转录来，需要将质控后的clean reads比对到参考基因组上。使用HISAT2<sup>[4]</sup>软件（[HISAT2软件官方手册](http://daehwankimlab.github.io/hisat2/manual/)）将clean reads与参考基因组进行快速精确的比对，获取reads在参考基因组上的定位信息。本项目所用参考基因组为`r params$ref_genome`，下载地址：`r params$ref_genome_download`。
+
+#### 3.2.1 比对率统计
+
+&emsp;&emsp;比对率指mapped reads占clean reads的百分比，是转录组数据利用率的最直接体现。比对率除了受数据测序质量影响外，还与指定的参考基因组组装的质量、参考基因组与测序样品的生物学分类关系远近有关。通过比对率，可以评估所选参考基因组组装是否能满足信息分析的需求。本项目中各样本的比对统计结果如下表所示：
+
+<center>**表3-3 样本与参考基因组比对情况统计表**</center>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+map_stats_df <- read.table(
+  params$map_stats, 
+  header = T, 
+  na.strings = c("NA"), 
+  sep = "\t"
+)
+
+datatable(
+  map_stats_df,
+  class = "hover cell-border order-column stripe",
+  rownames = FALSE,
+  extensions = c("Scroller", "FixedColumns", "Buttons"),
+  colnames = c("Sample", "Total_Reads", "Total_Map", "Unique_Map", "Multiple_Map"),
+  option = list(
+    pageLength = 5,
+    dom = 'Blfrtip',
+    buttons = c('copy', 'excel', 'print'),
+    columnDefs = list(list(className = 'dt-center', targets = "_all")),
+    initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().header()).css({'background-color': '#377EB8', 'color': 'white'});",
+        "}")
+  )
+)
+```
+
+<center>**说明** Sample：样本名称；Total_Reads: 测序有效数据中的clean reads数；Total_Map：比对到基因组上的reads数及其百分比；Unique_Map: 比对到参考基因组唯一位置的reads数及其百分比(用于后续定量数据分析reads)；Multi_Map：比对到参考基因组多个位置的reads数及其百分比。</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;**结果文件：**
+
+- 比对文件目录：results/02.alignment_count/hisat2；
+- 比对结果汇总表：results/02.alignment_count/all_alignment_stats.xls；
+- 比对结果汇总报告：results/02.alignment_count/multiqc/alignment_count_report.html；
+- 各样本比对结果bigwig文件：results/02.alignment_count/bigwig/*.bw。
+
+&nbsp;
+
+#### 3.2.3 比对区域分布 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;根据比对结果，分别统计reads在基因组外显子区域，内含子区域以及基因间区所占的比例。一般模式物种的基因注释较为完善（如人和小鼠），其比对到外显子区域的比例很高。比对到内含子区域的reads可能来源于前体mRNA或可变剪接事件滞留的内含子。比对到基因间区的reads，可能来源于ncRNA或少许DNA片段污染，也可能是基因注释还不够完善。所有样本的测序reads在基因组区域分布情况如下图所示：
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+
+sample_list <- read.table(params$meta_data_file, header=TRUE, sep="\t")[["sample"]]
+
+for (sample in sample_list) {
+  pic <- file.path(params$hisat2_dir, sample, paste0(sample, "_reads_origin_piechart.png"))
+  cat("##### ", sample, " \n")
+  cat("\n")
+  cat("![](", pic, "){width=50%}", "\n")
+  cat("<center>**图3-3 基因组不同区域Reads分布图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** Exon、Intron、Intergenic：比对到基因组外显子区域、基因组内含子区域、基因间区的reads数占mapped reads数的百分比。</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("\n")
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 各样本基因组不同区域Reads分布图：results/02.alignment_count/hisat2/\*/\*_reads_origin_piechart.png。
+
+&nbsp;
+
+<div style= "float:left;width:80px">
+```{r echo=FALSE}
+knitr::include_graphics(params$logo)
+```
+</div>
+
+<p style="text-align:right;line-height:0%;"><font size="1">
+杭州广科安德生物科技有限公司
+</font></p>
+
+***
+
+&nbsp;
+
+### 3.3 文库质量评估
+
+&emsp;&emsp;合格的文库是RNA-seq测序的必要条件，为确保文库的质量，通过随机性检验、片段长度分布、饱和度检验对测序文库进行质量评估。
+
+#### 3.3.1 随机性检验 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;mRNA片段化后的插入片段大小选择，是从mRNA序列中独立随机地抽取子序列，mRNA数目越大、打断方式和时间控制得越合适，目的RNA每个部分被抽取到的可能性就越接近，mRNA片段化随机性越高，mRNA上覆盖的Reads越均匀。
+
+&emsp;&emsp;通过Mapped Reads在各mRNA转录本上的位置分布，模拟mRNA片段化结果，检验mRNA片段化的随机程度。如果mRNA存在严重降解，被降解的碱基序列不能被测序，即无Reads比对上。因此，通过查看Mapped Reads在mRNA转录本上的位置分布可了解mRNA的降解情况。理想条件下，reads在所有表达的基因上的分布应该呈现均一化分布。样品Mapped Reads在mRNA转录本上的位置分布如下图：
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+
+sample_list <- read.table(params$meta_data_file, header=TRUE, sep="\t")[["sample"]]
+
+for (sample in sample_list) {
+  pic <- file.path(params$library_assessment_dir, "randcheck", sample, paste0(sample, "_randcheck.png"))
+  cat("##### ", sample, " \n")
+  cat("\n")
+  cat("![](", pic, "){width=60%}", "\n")
+  cat("<center>**图3-4 Mapped Reads在mRNA上的位置分布图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** 横坐标为标准化后的mRNA位置，纵坐标为对应位置区间内Reads在总Mapped Reads中所占百分比。由于参考的mRNA长度不同，作图时对把每个mRNA按照长度划分成100个区间，进而统计每一区间内的Mapped Reads数目及所占的比例，图中反映的是所有mRNA各个区间内的Mapped Reads比例的汇总。</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("\n")
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 各样本Mapped Reads在mRNA上的位置分布图：results/03.library_assessment/randcheck/\*/*_randcheck.png。
+
+&nbsp;
+
+#### 3.3.2 表达水平的饱和曲线检查 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;定量饱和曲线检查反映了基因表达水平定量对数据量的要求。表达量越高的基因，就越容易被准确定量；反之，表达量低的基因，需要较大的测序数据量才能被准确定量。软件RSeQC<sup>[5]</sup>通过对总的比对reads重采样（resampling），评估在当前测序深度下的RPKM<sup>[6]</sup>（Reads Per Kilobase of transcript per Million mapped reads）,使用相对错误率Percent Relative Error来测量评估的RPKM的准确性:
+
+$$
+\begin{aligned}
+ Percent\ Relative\ Error = \frac{\lvert RPKM_{obs} - RPKM_{real} \rvert}{RPKM_{real}} \times 100
+\end{aligned}
+$$
+
+&emsp;&emsp;其中，RPKM<sub>obs</sub>是指每一个百分比抽样下的当前转录本的RPKM值，RPKM<sub>real</sub>是指总的数据量下当前转录本的RPKM值。
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+
+sample_list <- read.table(params$meta_data_file, header=TRUE, sep="\t")[["sample"]]
+
+for (sample in sample_list) {
+  pic <- file.path(params$library_assessment_dir, "saturation", sample, paste0(sample, ".saturation.png"))
+  cat("##### ", sample, " \n")
+  cat("\n")
+  cat("![](", pic, "){width=50%}", "\n")
+  cat("<center>**图3-5 定量饱和曲线检查分布图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** 横坐标代表定位到基因组上的reads数占总reads数的百分比，纵坐标代表相对误差百分比。Q1为转录本表达水平低于25%的饱和度箱图；Q2为转录本表达水平在25%-50%的饱和度箱图；Q3为转录本表达水平在50%-75%的饱和度箱图；Q4为转录本表达水平高于75%的饱和度箱图。</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("\n")
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 各样本定量饱和曲线检查分布图：results/03.library_assessment/saturation/\*/*.saturation.png。
+
+&nbsp;
+
+<div style= "float:left;width:80px">
+```{r echo=FALSE}
+knitr::include_graphics(params$logo)
+```
+</div>
+
+<p style="text-align:right;line-height:0%;"><font size="1">
+杭州广科安德生物科技有限公司
+</font></p>
+
+***
+
+&nbsp;
+
+### 3.4 基因表达定量分析
+
+&emsp;&emsp;基因定量就是衡量基因表达水平的变化，对基因表达水平的分析可以直接体现样本中转录本的丰度情况，转录本丰度越高，则基因表达水平越高。基因的表达具有组织和时空特异性，不同生理状态或发育阶段的样本基因的表达情况不同，通过对基因表达水平的分析，可以研究不同实验样本中的基因表达变化。
+
+&emsp;&emsp;RNA-seq测序结果为表达的转录本的reads，一般一个基因表达的转录本越多，获得的来自该基因的reads会越多，因此可以根据测序reads比对到每个转录本中的数目（Count）计算该基因的表达水平。根据基因比对在参考基因组上的位置信息，从而统计每个基因从起始到终止范围内覆盖的reads数。该部分分析采用subread软件中的featureCounts<sup>[7]</sup>工具。本报告中仅对表格中的部分结果进行展示，详细信息见结果文件。
+
+#### 3.4.1 基因表达定量
+
+&emsp;&emsp;我们对每个样本分别进行基因表达水平的定量分析，再合并得到所有样本的表达矩阵，第一列为基因的ID，其余列为各样本的原始比对片段（fragment，即双端reads）数，所有样本平均表达量前50的基因如下表所示：
+
+<center>**表3-4 基因表达定量比对片段数统计结果展示表**</center>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+featureCounts_merged_df <- read.table(
+  params$featureCounts_merged, 
+  header = T, 
+  na.strings = c("NA"), 
+  sep = "\t",
+  check.names=FALSE
+) 
+
+featureCounts_merged_df <- featureCounts_merged_df %>%
+  mutate(mean_count = rowMeans(select(featureCounts_merged_df, 
+                                      colnames(featureCounts_merged_df)[- 1]), na.rm = TRUE)) %>%
+  arrange(desc(mean_count)) %>%
+  select(-mean_count) %>%
+  slice(1:50)
+
+datatable(
+  featureCounts_merged_df,
+  class = "hover cell-border order-column stripe",
+  rownames = FALSE,
+  extensions = c("Scroller", "FixedColumns", "Buttons"),
+  option = list(
+    scrollX = TRUE,
+    pageLength = 5,
+    dom = 'Blfrtip',
+    buttons = c('copy', 'excel', 'print'),
+    columnDefs = list(list(className = 'dt-center', targets = "_all")),
+    initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().header()).css({'background-color': '#377EB8', 'color': 'white'});",
+        "}")
+  )
+)
+```
+
+<center>**说明** Gene：基因Ensembl ID号；Sample：各样本定量所得的原始比对片段数。</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;**结果文件：**
+
+- 基因表达定量原始结果文件：results/02.alignment_count/featureCounts/featureCounts_merged_count.tsv；
+- 带基因注释信息的基因表达定量原始结果文件：results/02.alignment_count/featureCounts/featureCounts_merged_count.annot.tsv；
+
+&nbsp;
+
+#### 3.4.2 基因表达分布
+
+&emsp;&emsp;基因的read counts数目还和基因长度和测序深度有关，为了让片段数目能真实地反映转录本表达水平，需要对样品中的mapped reads的数目和转录本长度进行归一化。我们采用FPKM<sup>[6]</sup>（Fragments Per Kilobase of transcript per Million fragments mapped）对原始read count值进行标准化，作为衡量转录本或基因表达水平的指标。FPKM计算公式如下：
+
+$$
+\begin{aligned}
+ FPKM = \frac{cDNAFragments}{MappedFragments(Millions) \times TranscriptLength(kb)}
+\end{aligned}
+$$
+
+&emsp;&emsp;公式中，cDNA Fragments表示比对到某一转录本上的片段数目，即双端reads数目；Mapped Fragments (Millions)表示比对到转录本上的片段总数，以10<sup>6</sup>为单位；Transcript Length(kb)：转录本长度，以10<sup>3</sup>个碱基为单位。
+
+&emsp;&emsp;所有样本平均基因表达定量FPKM值前50的基因如下表所示：
+
+<center>**表3-5 基因表达定量FPKM结果展示表**</center>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+fpkm_merged_df <- read.table(
+  params$fpkm_merged, 
+  header = T, 
+  na.strings = c("NA"), 
+  sep = "\t",
+  check.names=FALSE
+) 
+
+fpkm_merged_df <- fpkm_merged_df %>%
+  mutate(mean_count = rowMeans(select(fpkm_merged_df, 
+                                      colnames(fpkm_merged_df)[- 1]), 
+                               na.rm = TRUE)) %>%
+  arrange(desc(mean_count)) %>%
+  select(-mean_count) %>%
+  slice(1:50)
+
+datatable(
+  fpkm_merged_df,
+  class = "hover cell-border order-column stripe",
+  rownames = FALSE,
+  extensions = c("Scroller", "FixedColumns", "Buttons"),
+  option = list(
+    scrollX = TRUE,
+    pageLength = 5,
+    dom = 'Blfrtip',
+    buttons = c('copy', 'excel', 'print'),
+    columnDefs = list(list(className = 'dt-center', targets = "_all")),
+    initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().header()).css({'background-color': '#377EB8', 'color': 'white'});",
+        "}")
+  )
+)
+```
+
+<center>**说明** Gene：基因Ensembl ID号；Sample：各样本定量所得的对应基因的FPKM值。</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;对于各个样本中基因表达量绘制箱线图，不仅可以查看单个样品基因表达水平分布的离散程度，还可以直观的比较不同样品的整体基因表达水平。本项目各样本的基因表达定量FPKM值分布箱线图如下：
+
+![](`r params$fpkm_boxplot`){width=60%}
+
+<center>**图3-6 各样本基因表达量FPKM分布箱线图**</center>
+
+<center>&nbsp;</center>
+
+<center>**说明** 横坐标为样品名称，纵坐标为log10(FPKM)，每个的箱线图展示了五个统计量(至上而下分别为最大值，上四分位数，中位数，下四分位数和最小值)。</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;**结果文件：**
+
+- 基因表达定量FPKM结果：results/02.alignment_count/fpkm/fpkm_merged_count.tsv；
+- 带基因注释信息的基因表达定量FPKM结果：results/02.alignment_count/fpkm/fpkm_merged_count.annot.tsv；
+- 基因表达定量FPKM分布箱线图：results/02.alignment_count/fpkm/fpkm_boxplot.png。
+
+&nbsp;
+
+#### 3.4.3 样本间相关性
+
+&emsp;&emsp;研究表明，同一基因的表达在不同的个体间存在生物学可变性<sup>[8]</sup>（Biological Variability）为了寻找真正感兴趣的差异表达基因，需要考虑和处理因生物学可变性造成的表达差异<sup>[9]</sup>。目前最常用且最有效的方法是在实验设计中设立生物学重复。重复条件限制越严格，重复样品数目越多，寻找到的差异表达基因越可靠。对于设立生物学重复的项目，样品间基因表达水平的相关性是检验生物学实验操作的可重复性、评估差异表达基因的可靠性和辅助异常样品的筛查的重要指标。我们将皮尔逊相关系数R（Pearson's Correlation Coefficient） 作为生物学重复相关性的评估指标<sup>[10]</sup>，计算得到R<sup>2</sup>的越接近1，说明两个重复样品相关性越强。本项目样本间FPKM表达量相关性热图如下：
+
+![](`r params$fpkm_heatmap`){width=60%}
+
+<center>**图3-7 样本间FPKM表达量相关性热图**</center>
+
+<center>&nbsp;</center>
+
+<center>**说明** 图中热图上每一个色块上的数值代表色块对应横纵轴两个样本之间皮尔逊相关系数的平方，数值越大，相关性越高。</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;**结果文件：**
+
+- 基因表达定量FPKM样本间相关性热图：results/02.alignment_count/fpkm/fpkm_heatmap.png。
+
+&nbsp;
+
+#### 3.4.4 PCA分析
+
+&emsp;&emsp;主成分分析（PCA），可以将多个变量通过降维为少数几个相互独立的变量（即主成分），在转录组测序分析中，会将基因的表达量降维，从复杂数据中找到样本分布的规律，从而评估样本的离散程度。PCA图中距离越近的点之间的组成越相似，通常为相同处理组的样本。本项目样本间FPKM表达量PCA图如下：
+
+![](`r params$fpkm_pca`){width=60%}
+
+<center>**图3-8 FPKM表达量主成分分析结果图**</center>
+
+<center>&nbsp;</center>
+
+<center>**说明** 横坐标和纵坐标表示第一和第二主成分，百分比表示相应主成分对样本差异的贡献值，每个点表示一个样本，不同分组的样本用不同颜色和形状表示。</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;**结果文件：**
+
+- 基因表达定量FPKM样本间PCA图：results/02.alignment_count/fpkm/fpkm_pca.png。
+
+&nbsp;
+
+<div style= "float:left;width:80px">
+```{r echo=FALSE}
+knitr::include_graphics(params$logo)
+```
+</div>
+
+<p style="text-align:right;line-height:0%;"><font size="1">
+杭州广科安德生物科技有限公司
+</font></p>
+
+***
+
+&nbsp;
+
+### 3.5 基因差异表达分析
+
+&emsp;&emsp;基因表达定量完成后，需要对其表达数据进行统计学分析，筛选样本在不同状态下表达水平显著差异的基因（差异表达基因，DEG）。差异表达分析得到的基因集合叫做差异表达基因集，使用“A-vs-B”的方式命名（A为实验处理组，B为对照组）。根据两（组）样品之间表达水平的相对高低，差异表达基因可以划分为上调基因（Up-regulated Gene）和下调基因（Down-regulated Gene）。上调基因在样品（组）A中的表达水平高于样品（组）B中的表达水平；反之为下调基因。上调和下调是相对的，由所给A和B的顺序决定。
+
+&emsp;&emsp;差异分析主要分为三个步骤：
+
+- 首先对原始的read count值进行标准化（normalization），主要是对测序深度的校正；
+- 然后统计学模型进行假设检验概率（pvalue）的计算；
+- 最后进行多重假设检验校正，得到FDR值（错误发现率，padj是其常见形式)。
+
+&emsp;&emsp;基于基因在各个样本中的read count值使用差异分析软件进行差异表达基因筛选，其中对于有生物学重复的差异分组，使用DESeq2<sup>[11]</sup> 软件进行差异分析；对于没有生物学重复的差异分组，使用edgeR<sup>[12]</sup>软件进行差异分析。差异倍数（Fold Change）表示两样品（组）间表达量的比值。错误发现率（False Discovery Rate，FDR）是通过对差异显著性p值（p-value）进行校正得到的，表示差异的显著性。为了方便比较，将差异倍数取了对数值，以log2FC表示，log2FC的绝对值越大，FDR值越小的基因在两组样本中的差异变化越明显。
+
+#### 3.5.1 基因差异表达显著性分析 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;每个比较组合的基因表达差异显著性分析如下表所示，各个比较组合的所有基因表达差异显著性结果前50行如下表所示：
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+diffexp_results_list <- Sys.glob(file.path(params$diffexp_dir, "*", "*_diffexp.DEG.xls"))
+
+for (f in diffexp_results_list) {
+  diffexp_results_df <- read.table(
+    f,
+    header = T,
+    na.strings = c("NA"),
+    sep = "\t",
+    check.names=FALSE
+  ) %>%
+    slice(1:50)
+
+  contrast <- gsub("_diffexp.DEG.xls", "", basename(f))
+  cat("##### ", contrast, " \n")
+  cat("\n")
+  cat("<center>**表3-6 基因表达差异显著性结果展示表**</center>", "\n")
+  cat(knitr::knit_print(DT::datatable(
+    diffexp_results_df,
+    class = "hover cell-border order-column stripe",
+    rownames = FALSE,
+    extensions = c("Scroller", "FixedColumns", "Buttons"),
+    option = list(
+      scrollX = TRUE,
+      pageLength = 5,
+      dom = 'Blfrtip',
+      buttons = c('copy', 'excel', 'print'),
+      columnDefs = list(list(className = 'dt-center', targets = "_all")),
+      initComplete = JS(
+          "function(settings, json) {",
+          "$(this.api().table().header()).css({'background-color': '#377EB8', 'color': 'white'});",
+          "}")
+    )
+  )))
+  cat("<center>**说明** gene：基因Ensembl ID号；sample：各样本的read count值；group：各组read count均值；log2FoldChange：处理组与对照组基因表达量差异倍数的对数值（以2为底取对数）；pvalue：显著性检验的值；padj：多重假设检验校正后的p值；gene_name：基因名称；gene_chr：基因所在的染色体名称；gene_start：基因在染色体的起始位置；gene_end：基因在染色体的终止位置；gene_strand：基因所在染色体的正负链信息；gene_biotype：基因类型，如编码蛋白基因，长链非编码基因等；gene_description：基因功能描述；regulate：差异表达基因上调（Up）还是下调（Down）。</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("\n")
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 各比较组合的基因表达差异显著性结果文件（所有基因）：results/04.diffexp_analysis/\*/\*_diffexp.xls；
+- 各比较组合的基因表达差异显著性结果文件（仅差异表达基因）：results/04.diffexp_analysis/\*/\*_diffexp.DEG.xls。
+
+&nbsp;
+
+#### 3.5.2 差异表达基因统计 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;每个比较组合的差异表达基因（包括上调和下调）数目统计以及筛选差异的标准如下表所示：
+
+<center>**表3-7 差异表达基因统计结果展示表**</center>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+diffexp_stats_df <- read.table(
+  params$diffexp_stats,
+  header = T,
+  na.strings = c("NA"),
+  sep = "\t"
+)
+
+datatable(
+  diffexp_stats_df,
+  class = "hover cell-border order-column stripe",
+  rownames = FALSE,
+  extensions = c("Scroller", "FixedColumns", "Buttons"),
+  option = list(
+    pageLength = 5,
+    dom = 'Blfrtip',
+    buttons = c('copy', 'excel', 'print'),
+    columnDefs = list(list(className = 'dt-center', targets = "_all")),
+    initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().header()).css({'background-color': '#377EB8', 'color': 'white'});",
+        "}")
+  )
+)
+```
+
+<center>**说明** contrast：比较组合名称（实验处理组-vs-对照组）；all：该比较组合差异表达基因总数；up：该比较组合差异基因表达上调的数目；down：该比较组合差异基因表达下调的数目；threshold：该比较组合进行差异基因筛选的软件及阈值。</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;对每个比较组合的差异表达基因数目（包含上调和下调）用柱状图进行展示：
+
+![](`r params$diffexp_stats_barplot`){width=60%}
+
+<center>**图3-9 各比较组合中差异表达基因数目统计柱状图**</center>
+
+<center>&nbsp;</center>
+
+<center>**说明** 横坐标代表不同的差异比较组合，红色为全部差异基因，绿色为上调基因，蓝色为下调基因，纵坐标代表差异表达基因数目。</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;火山图是散点图的一种，形状类似于火山喷发，是一种图形展示方法，在生信分析过程中常被用于展示两个（组）样品中差异基因的分布情况或者突出展示某些基因表达水平的差异变化和显著性。本项目中各个差异比较组的差异表达火山图如下：
+
+```{r, echo=FALSE, results='asis'}
+
+volcano_list <- Sys.glob(file.path(params$diffexp_dir, "*", "*_diffexp_volcano.png"))
+
+for (volcano in volcano_list) {
+  contrast <- gsub("_diffexp_volcano.png", "", basename(volcano))
+  cat("##### ", contrast, " \n")
+  cat("\n")
+  cat("![](", volcano, "){width=60%}", "\n")
+  cat("<center>**图3-10 差异表达基因火山图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** 差异表达火山图中的每一个点表示一个基因，横坐标表示某一个基因在两样品中表达量差异倍数的对数值；纵坐标表示基因表达量变化的统计学显著性的负对数值。横坐标绝对值越大，说明表达量在两样品间的表达量倍数差异越大；纵坐标值越大，表明差异表达越显著，筛选得到的差异表达基因越可靠。图中蓝色的点代表下调差异表达基因，红色的点代表上调差异表达基因，灰色的点代表非差异表达基因。</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("\n")
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 各比较组合的差异表达基因数目统计结果：results/04.diffexp_analysis/all_diffexp_stats.tsv；
+- 各比较组合的差异表达基因数目统计柱状图：results/04.diffexp_analysis/all_diffexp_stats_barplot.png；
+- 各比较组合的差异表达基因数目统计火山图：results/04.diffexp_analysis/\*/\*_diffexp_volcano.png。
+
+&nbsp;
+
+#### 3.5.3 差异表达基因聚类 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;具有相似表达模式的基因可能具有相同的功能，为了直观的展示不同分组中基因的表达差异以及挖掘新的功能基因，对筛选出的所有差异表达基因进行层次聚类分析，将在不同样本中具有相同或相似表达模式的基因进行聚类，并通过热图进行展示，从而根据已知功能的基因来发现与其有相似表达模式基因潜在的功能，本项目中基因聚类表达热图如下：
+
+```{r, echo=FALSE, results='asis'}
+
+heatmap_list <- Sys.glob(file.path(params$diffexp_dir, "*", "*_diffexp_heatmap.png"))
+
+for (heatmap in heatmap_list) {
+  contrast <- gsub("_diffexp_heatmap.png", "", basename(heatmap))
+  cat("##### ", contrast, " \n")
+  cat("\n")
+  cat("![](", heatmap, "){width=60%}", "\n")
+  cat("<center>**图3-11 差异表达聚类热图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** 横坐标代表样本名称，纵坐标代表的差异表达基因及基因的聚类结果。图中不同的列代表不同的样品，不同的行代表不同的基因。颜色代表了基因在样品中的表达量水平，颜色越红，表达量越高，越蓝，表达量越低。</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("\n")
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 各比较组合的差异表达聚类热图：results/04.diffexp_analysis/\*/\*_diffexp_heatmap.png。
+
+&nbsp;
+
+<div style= "float:left;width:80px">
+```{r echo=FALSE}
+knitr::include_graphics(params$logo)
+```
+</div>
+
+<p style="text-align:right;line-height:0%;"><font size="1">
+杭州广科安德生物科技有限公司
+</font></p>
+
+***
+
+&nbsp;
+
+### 3.6 差异基因富集分析
+
+&emsp;&emsp;对于转录组分析而言，往往涉及到成千上万个基因，这会使分析变得很复杂。解决思路是将一个基因列表分成多个部分，从而减少分析的复杂度。为了解决怎么分成不同类，通常会对基因功能进行富集分析, 期望发现在生物学过程中起关键作用的生物通路, 从而揭示和理解生物学过程的基本分子机制。功能富集分析可以将成百上千个基因、蛋白或者其他分子分到不同的通路中，以减少分析的复杂度。基因功能富集分析首先要构建基因集（gene set，如GO和KEGG数据库等），也就是基因组注释信息进行分类。然后再把我们的目标基因集（差异基因集或者其他基因集）映射到背景基因集上.
+
+&emsp;&emsp;富集分析基于超几何分布原理，其中差异基因集为差异显著分析所得差异基因并进行注释的基因集，背景基因集为所有进行差异显著分析的基因并进行注释的基因集。富集分析结果是对每个差异比较组合的所有差异基因集（all）、上调差异基因集（up）、下调差异基因集（down）进行富集。
+
+![](`r params$enrich_principle_pic`){width=35%}
+
+<center>**图3-12 富集分析原理图**</center>
+
+<center>&nbsp;</center>
+
+#### 3.6.1 GO功能富集分析 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;GO<sup>[13]</sup>数据库是GO组织（Gene Ontology Consortium）于2000年构建的一个结构化的标准生物学注释系统，旨在建立基因及其产物知识的标准词汇体系，适用于各个物种。GO注释系统是一个有向无环图，包含三个主要分支，即：生物学过程（Biological Process），分子功能（Molecular Function）和细胞组分（Cellular Component）。
+
+&emsp;&emsp;为了了解与整个基因组背景相比显著富集的GO Term，对每个分组的差异基因集，使用ClusterProfiler<sup>[14]</sup>采用超几何检验方法分别进行生物学过程，分子功能和细胞组分的富集分析。富集分析结果前50条如下表所示：
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+contrast_list <- basename(Sys.glob(file.path(params$enrich_dir, "GO", "*")))
+
+for (c in contrast_list) {
+  for (s in list("all", "down", "up")) {
+    f <- file.path(params$enrich_dir, "GO", c, s, paste(c, s, "GO_enrich_results.xls", sep="_"))
+
+    enrich_results_df <- read.table(
+      f,
+      header = T,
+      na.strings = c("NA"),
+      sep = "\t"
+    ) %>%
+      slice(1:50)
+
+    contrast <- gsub(".diffexp.tsv", "", basename(f))
+    cat("##### ", paste0(c, ": ", s), " \n")
+    cat("\n")
+    cat("<center>**表3-8 差异表达基因GO富集分析部分结果展示表**</center>", "\n")
+    cat(knitr::knit_print(DT::datatable(
+      enrich_results_df,
+      class = "hover cell-border order-column stripe",
+      rownames = FALSE,
+      extensions = c("Scroller", "FixedColumns", "Buttons"),
+      option = list(
+        scrollX = TRUE,
+        pageLength = 5,
+        dom = 'Blfrtip',
+        buttons = c('copy', 'excel', 'print'),
+        columnDefs = list(list(className = 'dt-center', targets = "_all")),
+        language = list(emptyTable = "差异表达基因过少，无法进行富集分析！"),
+        initComplete = JS(
+            "function(settings, json) {",
+            "$(this.api().table().header()).css({'background-color': '#377EB8', 'color': 'white'});",
+            "}")
+      )
+    )))
+    cat("<center>**说明** ONTOLOGY：GO数据库分类，包括生物过程BP、细胞组分CC、分子功能MF；ID：GO Term编号；Description：GO Term编号对应的功能描述；GeneRatio：注释到GO Term编号上的差异基因数与差异基因总数的比值；BgRatio：注释到GO Term编号上的背景基因数与背景基因总数的比值；pvalue：显著性检验p值；padj/qvalue：基于不同算法进行多重假设检验校正后的p值；geneID：注释到GO Term编号上的差异基因名称；Count：注释到GO Term编号上的差异基因数。</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+  }
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;采用ClusterProfiler对富集结果得到的Term采用柱状图、气泡图等形式进行可视化。可通过GO功能富集的信息推测该分组内差异基因可能参与的功能，一般通过矫正p-value后的padj值的大小判断功能通路的显著性，padj值越小越显著。
+
+##### GO功能富集分析柱状图 {.tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- basename(Sys.glob(file.path(params$enrich_dir, "GO", "*")))
+
+for (c in contrast_list) {
+  for (s in list("all", "down", "up")) {
+    go_barplot <- file.path(params$enrich_dir, "GO", c, s, paste(c, s, "GO_enrich_barplot2.png", sep="_"))
+    cat("###### ", paste0(c, ": ", s), " \n")
+    cat("\n")
+    cat("![](", go_barplot, "){width=60%}", "\n")
+    cat("<center>**图3-13 差异表达基因GO富集柱状图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 图中纵坐标为GO Term, 横坐标为GO Term富集的gene数目，颜色从蓝到红代表富集的显著性大小；图中GO Term按生物过程BP、细胞组分CC和分子功能MF三大类别进行分类。</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+  }
+}
+
+```
+
+##### {- .toc-ignore}
+
+##### GO功能富集分析气泡图 {.tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- basename(Sys.glob(file.path(params$enrich_dir, "GO", "*")))
+
+for (c in contrast_list) {
+  for (s in list("all", "down", "up")) {
+    go_dotplot <- file.path(params$enrich_dir, "GO", c, s, paste(c, s, "GO_enrich_dotplot2.png", sep="_"))
+    cat("###### ", paste0(c, ": ", s), " \n")
+    cat("\n")
+    cat("![](", go_dotplot, "){width=60%}", "\n")
+    cat("<center>**图3-14 差异表达基因GO富集气泡图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 图中横坐标为注释到GO Term上的差异基因数与差异基因总数的比值，纵坐标为GO Term，点的大小代表注释到GO Term上的基因数，颜色从蓝到红代表富集的显著性大小；图中GO Term按生物过程BP、细胞组分CC和分子功能MF三大类别进行分类。</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+  }
+}
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- GO功能富集分析结果目录：results/05.enrich_analysis/GO；
+- GO功能富集分析结果表格：results/05.enrich_analysis/GO/\*/\*/\*_\*_GO_enrich_results.xls；
+- GO功能富集分析柱状图：results/05.enrich_analysis/GO/\*/\*/\*_\*_GO_enrich_barplot.png；
+- GO功能富集分析柱状图（按CC、BP、MF分类）：results/05.enrich_analysis/GO/\*/\*/\*_\*_GO_enrich_barplot2.png；
+- GO功能富集分析气泡图：results/05.enrich_analysis/GO/\*/\*/\*_\*_GO_enrich_dotplot.png；
+- GO功能富集分析气泡图（按CC、BP、MF分类）：results/05.enrich_analysis/GO/\*/\*/\*_\*_GO_enrich_dotplot2.png；
+- GO功能富集分析富集图：results/05.enrich_analysis/GO/\*/\*/\*_\*_GO_enrich_emapplot.png。
+
+&nbsp;
+
+#### 3.6.2 KEGG通路富集分析 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;在生物体内，不同的基因产物相互协调来行使生物学功能，对差异表达基因的通路（Pathway）注释分析有助于进一步解读基因的功能。KEGG<sup>[15]</sup>（Kyoto Encyclopedia of Genes and Genomes）是系统分析基因功能、基因组信息数据库，它有助于研究者把基因及表达信息作为一个整体网络进行研究。作为是有关Pathway的主要公共数据库，KEGG提供的整合代谢途径(pathway)查询，包括碳水化合物、核苷、氨基酸等的代谢及有机物的生物降解，不仅提供了所有可能的代谢途径，而且对催化各步反应的酶进行了全面的注解，包含有氨基酸序列、PDB库的链接等等，是进行生物体内代谢分析、代谢网络研究的强有力工具。
+
+&emsp;&emsp;分析差异表达基因在某一通路上是否发生显著差异（over-presentation）即为差异表达基因的通路富集分析。KEGG 通路富集分析以KEGG数据库中Pathway为单位，应用超几何检验，找出与整个基因组背景相比，在差异表达基因中显著性富集的Pathway。通过Pathway显著性富集能确定基因参与的最主要生化代谢途径和信号转导途径。采用clusterProfiler对差异基因集进行KEGG通路富集分析，富集分析结果前50条如下表所示：
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+contrast_list <- basename(Sys.glob(file.path(params$enrich_dir, "KEGG", "*")))
+
+for (c in contrast_list) {
+  for (s in list("all", "down", "up")) {
+    f <- file.path(params$enrich_dir, "KEGG", c, s, paste(c, s, "KEGG_enrich_results.xls", sep="_"))
+
+    enrich_results_df <- read.table(
+      f,
+      header = T,
+      na.strings = c("NA"),
+      sep = "\t"
+    ) %>%
+      slice(1:50)
+
+    contrast <- gsub(".diffexp.tsv", "", basename(f))
+    cat("##### ", paste0(c, ": ", s), " \n")
+    cat("\n")
+    cat("<center>**表3-9 差异表达基因KEGG富集分析部分结果展示表**</center>", "\n")
+    cat(knitr::knit_print(DT::datatable(
+      enrich_results_df,
+      class = "hover cell-border order-column stripe",
+      rownames = FALSE,
+      extensions = c("Scroller", "FixedColumns", "Buttons"),
+      option = list(
+        scrollX = TRUE,
+        pageLength = 5,
+        dom = 'Blfrtip',
+        buttons = c('copy', 'excel', 'print'),
+        columnDefs = list(list(className = 'dt-center', targets = "_all")),
+        language = list(emptyTable = "差异表达基因过少，无法进行富集分析！"),
+        initComplete = JS(
+            "function(settings, json) {",
+            "$(this.api().table().header()).css({'background-color': '#377EB8', 'color': 'white'});",
+            "}")
+      )
+    )))
+    cat("<center>**说明** ID：KEGG Pathway编号；Description：KEGG Pathway编号对应的功能描述；GeneRatio：注释到KEGG Pathway编号上的差异基因数与差异基因总数的比值；BgRatio：注释到KEG Pathway路编号上的背景基因数与背景基因总数的比值；pvalue：显著性检验p值；padj/qvalue：基于不同算法进行多重假设检验校正后的p值；geneID：注释到KEGG Pathway编号上的差异基因名称；Count：注释到KEGG Pathway编号上的差异基因数。</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+  }
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;通过KEGG注释分析，可以从生化代谢途径等方面找到与目标基因相关的代谢通路。差异表达基因的通路注释结果可视化展示的**示例**如下：
+
+![](`r params$pathview_example_pic`){width=70%}
+
+<center>**图3-15 差异表达基因的KEGG通路注释图**</center>
+
+<center>**说明** 相对于对照组来说，红色框标记的酶与上调基因有关，绿色框标记的酶与下调基因有关。框内的数字代表酶的编号（EC number），而整个通路由多种酶催化的复杂生化反应构成，此通路图中与差异表达基因相关的酶均用不同的颜色标出，根据研究对象间的差异，重点研究某些代谢通路相关基因的差异表达情况，通过通路解释表型差异的根源。</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;采用ClusterProfiler对富集结果得到的通路采用柱状图、气泡图等形式进行可视化。
+
+##### KEGG通路富集分析柱状图 {.tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- basename(Sys.glob(file.path(params$enrich_dir, "KEGG", "*")))
+
+for (c in contrast_list) {
+  for (s in list("all", "down", "up")) {
+    kegg_barplot <- file.path(params$enrich_dir, "KEGG", c, s, paste(c, s, "KEGG_enrich_barplot.png", sep="_"))
+    cat("###### ", paste0(c, ": ", s), " \n")
+    cat("\n")
+    cat("![](", kegg_barplot, "){width=60%}", "\n")
+    cat("<center>**图3-16 差异表达基因KEGG富集柱状图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 图中纵坐标为KEGG Pathway, 横坐标为KEGG Pathway富集的gene数目，颜色从蓝到红代表富集的显著性大小。</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+  }
+}
+
+```
+
+##### {- .toc-ignore}
+
+##### KEGG通路富集分析气泡图 {.tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- basename(Sys.glob(file.path(params$enrich_dir, "KEGG", "*")))
+
+for (c in contrast_list) {
+  for (s in list("all", "down", "up")) {
+    kegg_dotplot <- file.path(params$enrich_dir, "KEGG", c, s, paste(c, s, "KEGG_enrich_dotplot.png", sep="_"))
+    cat("###### ", paste0(c, ": ", s), " \n")
+    cat("\n")
+    cat("![](", kegg_dotplot, "){width=60%}", "\n")
+    cat("<center>**图3-17 差异表达基因KEGG富集气泡图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 图中横坐标为注释到KEGG Pathway上的差异基因数与差异基因总数的比值，纵坐标为KEGG Pathway，点的大小代表注释到KEGG Pathway上的基因数，颜色从蓝到红代表富集的显著性大小。</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+  }
+}
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- KEGG通路富集分析结果目录：results/05.enrich_analysis/KEGG；
+- KEGG通路富集分析结果表格：results/05.enrich_analysis/KEGG/\*/\*/\*_\*_KEGG_enrich_results.xls；
+- KEGG通路富集分析柱状图：results/05.enrich_analysis/KEGG/\*/\*/\*_\*_KEGG_enrich_barplot.png；
+- KEGG通路富集分析气泡图：results/05.enrich_analysis/KEGG/\*/\*/\*_\*_KEGG_enrich_dotplot.png；
+- KEGG通路富集分析富集图：results/05.enrich_analysis/KEGG/\*/\*/\*_\*_KEGG_enrich_emapplot.png；
+- KEGG通路富集分析top20显著通路注释图：results/05.enrich_analysis/KEGG/\*/\*/\*_\*_KEGG_enrich_pathway.zip。
+
+&nbsp;
+
+#### 3.6.3 Reactome通路富集分析 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;Reactome<sup>[16]</sup>数据库的基础是一个免费的、开放源代码的信号和代谢分子及其组织成生物途径和过程的关系数据库。Reactome数据模型的核心单元是反应。参与反应的实体(核酸、蛋白质、复合物、疫苗、抗癌疗法和小分子)形成一个生物相互作用网络，并分组为通路。Reactome中生物途径的例子包括经典的中间代谢，信号，转录调控，细胞凋亡和疾病。采用ReactomePA<sup>[17]</sup>对差异基因集进行Reactome富集分析，富集分析结果前50条如下表所示：
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+contrast_list <- basename(Sys.glob(file.path(params$enrich_dir, "Reactome", "*")))
+
+for (c in contrast_list) {
+  for (s in list("all", "down", "up")) {
+    f <- file.path(params$enrich_dir, "Reactome", c, s, paste(c, s, "Reactome_enrich_results.xls", sep="_"))
+
+    enrich_results_df <- read.table(
+      f,
+      header = T,
+      na.strings = c("NA"),
+      sep = "\t"
+    ) %>%
+      slice(1:50)
+
+    contrast <- gsub(".diffexp.tsv", "", basename(f))
+    cat("##### ", paste0(c, ": ", s), " \n")
+    cat("\n")
+    cat("<center>**表3-10 差异表达基因Reactome富集分析部分结果展示表**</center>", " \n")
+    cat(knitr::knit_print(DT::datatable(
+      enrich_results_df,
+      class = "hover cell-border order-column stripe",
+      rownames = FALSE,
+      extensions = c("Scroller", "FixedColumns", "Buttons"),
+      option = list(
+        scrollX = TRUE,
+        pageLength = 5,
+        dom = 'Blfrtip',
+        buttons = c('copy', 'excel', 'print'),
+        columnDefs = list(list(className = 'dt-center', targets = "_all")),
+        language = list(emptyTable = "差异表达基因过少，无法进行富集分析！"),
+        initComplete = JS(
+            "function(settings, json) {",
+            "$(this.api().table().header()).css({'background-color': '#377EB8', 'color': 'white'});",
+            "}")
+      )
+    )))
+    cat("<center>**说明** ID：Reactome Pathway编号；Description：Reactome Pathway编号对应的功能描述；GeneRatio：注释到Reactome Pathway编号上的差异基因数与差异基因总数的比值；BgRatio：注释到Reactome Pathway编号上的背景基因数与背景基因总数的比值；pvalue：显著性检验p值；padj/qvalue：基于不同算法进行多重假设检验校正后的p值；geneID：注释到Reactome Pathway编号上的差异基因名称；Count：注释到Reactome Pathway编号上的差异基因数。</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+  }
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;采用ClusterProfiler对富集结果得到的通路采用柱状图、气泡图等形式进行可视化。
+
+##### Reactome通路富集分析柱状图 {.tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- basename(Sys.glob(file.path(params$enrich_dir, "Reactome", "*")))
+
+for (c in contrast_list) {
+  for (s in list("all", "down", "up")) {
+    reactome_barplot <- file.path(params$enrich_dir, "Reactome", c, s, paste(c, s, "Reactome_enrich_barplot.png", sep="_"))
+    cat("###### ", paste0(c, ": ", s), " \n")
+    cat("\n")
+    cat("![](", reactome_barplot, "){width=60%}", "\n")
+    cat("<center>**图3-18 差异表达基因Reactome富集柱状图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 图中纵坐标为Reactome Pathway, 横坐标为Reactome Pathway富集的gene数目，颜色从蓝到红代表富集的显著性大小。</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+  }
+}
+
+```
+
+##### {- .toc-ignore}
+
+##### Reactome通路富集分析气泡图 {.tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- basename(Sys.glob(file.path(params$enrich_dir, "Reactome", "*")))
+
+for (c in contrast_list) {
+  for (s in list("all", "down", "up")) {
+    reactome_dotplot <- file.path(params$enrich_dir, "Reactome", c, s, paste(c, s, "Reactome_enrich_dotplot.png", sep="_"))
+    cat("###### ", paste0(c, ": ", s), " \n")
+    cat("\n")
+    cat("![](", reactome_dotplot, "){width=60%}", "\n")
+    cat("<center>**图3-19 差异表达基因Reactome富集气泡图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 图中横坐标为注释到Reactome Pathway上的差异基因数与差异基因总数的比值，纵坐标为Reactome Pathway，点的大小代表注释到Reactome Pathway上的基因数，颜色从蓝到红代表富集的显著性大小。</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+  }
+}
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- Reactome通路富集分析结果目录：results/05.enrich_analysis/Reactome；
+- Reactome通路富集分析结果表格：results/05.enrich_analysis/Reactome/\*/\*/\*_\*_Reactome_enrich_results.xls；
+- Reactome通路富集分析柱状图：results/05.enrich_analysis/Reactome/\*/\*/\*_\*_Reactome_enrich_barplot.png；
+- Reactome通路富集分析气泡图：results/05.enrich_analysis/Reactome/\*/\*/\*_\*_Reactome_enrich_dotplot.png；
+- Reactome通路富集分析富集图：results/05.enrich_analysis/Reactome/\*/\*/\*_\*_Reactome_enrich_emapplot.png。
+
+&nbsp;
+
+#### 3.6.4 DO功能富集分析 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;（**DO功能富集分析模块仅针对人类转录组测序数据进行分析**）DO<sup>[18]</sup>（Disease Ontolog）数据库描述人类基因功能与疾病相关的数据库。与GO数据库类似，通过参照MeSH、 ICD等疾病分类标准，对人类的常见疾病与罕见病进行了归纳整理，提供了一个统一的，标准化的疾病分类系统。采用DOSE<sup>[19]</sup>对差异基因集进行DO富集分析，富集分析结果前50条如下表所示：
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+contrast_list <- basename(Sys.glob(file.path(params$enrich_dir, "DO", "*")))
+
+for (c in contrast_list) {
+  for (s in list("all", "down", "up")) {
+    f <- file.path(params$enrich_dir, "DO", c, s, paste(c, s, "DO_enrich_results.xls", sep="_"))
+
+    enrich_results_df <- read.table(
+      f,
+      header = T,
+      na.strings = c("NA"),
+      sep = "\t"
+    ) %>%
+      slice(1:50)
+
+    contrast <- gsub(".diffexp.tsv", "", basename(f))
+    cat("##### ", paste0(c, ": ", s), " \n")
+    cat("\n")
+    cat("<center>**表3-11 差异表达基因DO富集分析部分结果展示表**</center>", " \n")
+    cat(knitr::knit_print(DT::datatable(
+      enrich_results_df,
+      class = "hover cell-border order-column stripe",
+      rownames = FALSE,
+      extensions = c("Scroller", "FixedColumns", "Buttons"),
+      option = list(
+        scrollX = TRUE,
+        pageLength = 5,
+        dom = 'Blfrtip',
+        buttons = c('copy', 'excel', 'print'),
+        columnDefs = list(list(className = 'dt-center', targets = "_all")),
+        language = list(emptyTable = "差异表达基因过少，无法进行富集分析！"),
+        initComplete = JS(
+            "function(settings, json) {",
+            "$(this.api().table().header()).css({'background-color': '#377EB8', 'color': 'white'});",
+            "}")
+      )
+    )))
+    cat("<center>**说明** ID：DO Term编号；Description：DO Term编号对应的功能描述；GeneRatio：注释到DO Term编号上的差异基因数与差异基因总数的比值；BgRatio：注释到DO Term编号上的背景基因数与背景基因总数的比值；pvalue：显著性检验p值；padj/qvalue：基于不同算法进行多重假设检验校正后的p值；geneID：注释到DO Term编号上的差异基因名称；Count：注释到DO Term编号上的差异基因数。</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+  }
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;采用ClusterProfiler对富集结果得到的通路采用柱状图、气泡图等形式进行可视化。
+
+##### DO功能富集分析柱状图 {.tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- basename(Sys.glob(file.path(params$enrich_dir, "DO", "*")))
+
+for (c in contrast_list) {
+  for (s in list("all", "down", "up")) {
+    do_barplot <- file.path(params$enrich_dir, "DO", c, s, paste(c, s, "DO_enrich_barplot.png", sep="_"))
+    cat("###### ", paste0(c, ": ", s), " \n")
+    cat("\n")
+    cat("![](", do_barplot, "){width=60%}", "\n")
+    cat("<center>**图3-20 差异表达基因DO富集柱状图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 图中纵坐标为DO Term, 横坐标为DO Term富集的gene数目，颜色从蓝到红代表富集的显著性大小。</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+  }
+}
+
+```
+
+##### {- .toc-ignore}
+
+##### DO功能富集分析气泡图 {.tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- basename(Sys.glob(file.path(params$enrich_dir, "DO", "*")))
+
+for (c in contrast_list) {
+  for (s in list("all", "down", "up")) {
+    do_dotplot <- file.path(params$enrich_dir, "DO", c, s, paste(c, s, "DO_enrich_dotplot.png", sep="_"))
+    cat("###### ", paste0(c, ": ", s), " \n")
+    cat("\n")
+    cat("![](", do_dotplot, "){width=60%}", "\n")
+    cat("<center>**图3-21 差异表达基因DO富集气泡图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 图中横坐标为注释到DO Term上的差异基因数与差异基因总数的比值，纵坐标为DO Term，点的大小代表注释到DO Term上的基因数，颜色从蓝到红代表富集的显著性大小。</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+  }
+}
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- DO功能富集分析结果目录：results/05.enrich_analysis/DO；
+- DO功能富集分析结果表格：results/05.enrich_analysis/DO/\*/\*/\*_\*_DO_enrich_results.xls；
+- DO功能富集分析柱状图：results/05.enrich_analysis/DO/\*/\*/\*_\*_DO_enrich_barplot.png；
+- DO功能富集分析气泡图：results/05.enrich_analysis/DO/\*/\*/\*_\*_DO_enrich_dotplot.png；
+- DO功能富集分析富集图：results/05.enrich_analysis/DO/\*/\*/\*_\*_DO_enrich_emapplot.png。
+
+
+&nbsp;
+
+#### 3.6.5 GSEA富集分析
+
+&emsp;&emsp;基因集富集分析(GSEA: Gene Set Enrichment Analysis)<sup>[20]</sup>，可以在没有先验经验存在的情况下根据所有基因表达情况对所有基因进行富集分析。一般的差异分析通常只集中关注于一些显著的上调或下调基因，而这会遗漏部分差异表达不显著却有重要生物学意义的基因。而GSEA不会设置差异阈值，能够检测出微弱但是一致的趋势。本项目中使用ClusterProfiler对差异基因集进行GSEA富集分析，采用GO、KEGG、Reactome作为感兴趣的基因集合，以每个差异分组的log2FC作为背景基因集的打分来分析感兴趣基因集合的富集情况。通过GSEA分析，可以得到功能通路整体变化的趋势，并锁定与表型相关的关键基因集。
+
+##### GSEA富集分析气泡图 {.tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- basename(Sys.glob(file.path(params$enrich_dir, "GSEA", "*")))
+
+for (c in contrast_list) {
+  for (s in list("GO", "KEGG", "Reactome")) {
+    gsea_dotplot <- file.path(params$enrich_dir, "GSEA", c, s, paste(c, "GSEA", s, "enrich_dotplot.png", sep="_"))
+    cat("###### ", paste0(c, ": GSEA-", s), " \n")
+    cat("\n")
+    cat("![](", gsea_dotplot, "){width=65%}", "\n")
+    cat("<center>**图3-22 GSEA富集气泡图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 图中横坐标为注释到GO Term/KEGG Pathway/Reactome Pathway的GSEA核心富集基因数与该GO Term/KEGG Pathway/Reactome Pathway基因总数的比值，纵坐标为GO Term/KEGG Pathway/Reactome Pathway，点的大小代表注释到GO Term/KEGG Pathway/Reactome Pathway上的基因数，颜色从蓝到红代表富集的显著性大小。</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+  }
+}
+```
+
+##### {- .toc-ignore}
+
+##### GSEA富集分析GSEA结果图 {.tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- basename(Sys.glob(file.path(params$enrich_dir, "GSEA", "*")))
+
+for (c in contrast_list) {
+  for (s in list("GO", "KEGG", "Reactome")) {
+    gsea_dotplot <- file.path(params$enrich_dir, "GSEA", c, s, paste(c, "GSEA", s, "enrich_gseaplot_top5.png", sep="_"))
+    cat("###### ", paste0(c, ": GSEA-", s), " \n")
+    cat("\n")
+    cat("![](", gsea_dotplot, "){width=50%}", "\n")
+    cat("<center>**图3-23 GSEA富集结果图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 图中展示了GSEA富集分析排名前五的GO Term/KEGG Pathway/Reactome Pathway的名称，横坐标代表排序后的基因集的位置信息，横坐标中的五种颜色竖线代表该GO Term/KEGG Pathway/Reactome Pathway中的基因；上图纵坐标为动态的富集打分，五种颜色的曲线代表每个位置上基因集合的富集打分（Enrichment Score），曲线的峰值即为该GO Term/KEGG Pathway/Reactome Pathway的ES值，如果ES值为正，那峰值基因前富集的基因就为该基因集下的核心基因，且当前功能表现为上调趋势；如果ES值为负，那峰值基因后富集的基因就为该基因集下的核心基因，且当前功能表现为下调趋势。下图纵坐标代表排序量（log2FC），灰色竖线的高低代表该GO Term/KEGG Pathway/Reactome Pathway中基因的log2FC的大小。</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+  }
+}
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- GSEA富集分析结果目录：results/05.enrich_analysis/GSEA；
+- GSEA富集分析结果表格：results/05.enrich_analysis/GSEA/\*/\*/\*\_GSEA_\*_enrich_results.xls；
+- GSEA富集分析气泡图：results/05.enrich_analysis/GSEA/\*/\*/\*\_GSEA_\*_enrich_dotplot.png；
+- GSEA富集分析波浪图：results/05.enrich_analysis/GSEA/\*/\*/\*\_GSEA_\*_enrich_ridgeplot.png；
+- GSEA富集分析top5显著结果整合的GSEA结果图：<br>
+results/05.enrich_analysis/GSEA/\*/\*/\*\_GSEA_\*_enrich_gseaplot_top5.png；
+- GSEA富集分析top20显著结果各自的GSEA结果图：<br>
+results/05.enrich_analysis/GSEA/\*/\*/\*\_GSEA_\*_enrich_gseaplot.zip；
+- GSEA富集分析top20显著KEGG通路注释图：<br> 
+results/05.enrich_analysis/GSEA/\*/KEGG/\*\_GSEA_KEGG_enrich_pathway.zip。
+
+&nbsp;
+
+#### 3.6.6 蛋白互作网络 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;STRING<sup>[21]</sup>是收录多个物种预测的和实验验证的蛋白质-蛋白质互作的数据库，包括直接的物理互作和间接的功能相关。结合差异表达分析结果和数据库收录的互作关系对，构建差异表达基因互作网络。对于数据库中包含的物种，可直接从数据库中提取出目标基因集的互作关系对构建互作网络；对于数据库中未收录信息的物种，使用BLAST<sup>[22]</sup> 软件，将目的基因与数据库中的蛋白质进行序列比对，寻找同源蛋白，根据同源蛋白的互作关系对构建互作网络。通过蛋白互作网络预测，可以预测基因间互作关系，在海量的基因关系对中进一步缩小关键基因集，为后续的功能研究提供可靠候选。将构建好的蛋白互作网络进行分簇，前六个簇如下图所示：
+
+```{r, echo=FALSE, results='asis'}
+
+contrast_list <- basename(Sys.glob(file.path(params$enrich_dir, "PPI", "*")))
+
+for (c in contrast_list) {
+    ppi_top6_clusters_plot<- file.path(params$enrich_dir, "PPI", c, paste(c, "PPI_top6_clusters.png", sep="_"))
+    cat("##### ", paste0(c, ": PPI"), " \n")
+    cat("\n")
+    cat("![](", ppi_top6_clusters_plot, "){width=80%}", "\n")
+    cat("<center>**图3-24 差异表达基因蛋白质互作网络图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 图中的节点为蛋白质，边为互作关系。互作网络中节点(node)的大小与此节点的度(degree)成正比，即与此节点相连的边越多，它的度越大，节点也就越大。</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+}
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;交付结果中提供了差异基因蛋白互作网络数据文件，此文件可直接导入导入Cytoscape<sup>[23]</sup> 软件（[https://cytoscape.org/download.html](https://cytoscape.org/download.html)）进行可视化编辑。通过Cytoscape我们可以针对一些网络的拓扑属性进行统计和标示作图，根据不同的研究目的和需求，还可在网络图中进行调整节点位置和颜色等操作。
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;**结果文件：**
+
+- 各比较组合的蛋白互作网络图：results/05.enrich_analysis/PPI/\*/\*_PPI_top6_clusters.png；
+- 各比较组合的蛋白互作网络数据文件：results/05.enrich_analysis/PPI/\*/\*_PPI_STRING_link.csv。
+
+&nbsp;
+
+<div style= "float:left;width:80px">
+```{r echo=FALSE}
+knitr::include_graphics(params$logo)
+```
+</div>
+
+<p style="text-align:right;line-height:0%;"><font size="1">
+杭州广科安德生物科技有限公司
+</font></p>
+
+***
+
+&nbsp;
+
+### 3.7 可变剪接分析
+
+&emsp;&emsp;可变剪接（Alternative Splicing, AS），是大多数真核生物细胞中普遍的一种基因表达方式。真核细胞的基因序列包含内含子（intron）与外显子（exon），在基因转录成mRNA前体后内含子会被RNA剪切体移除，而外显子则保留于成熟mRNA中。一条未经剪切的RNA，可以具有多种外显子剪切形式，因此使得一个基因在不同时间、不同环境中可以翻译出不同的蛋白质，进而增加其生理状况下系统的复杂性或适应性。
+
+&emsp;&emsp;rMATS<sup>[24]</sup>是一款适用于RNA-Seq数据的可变剪接分析软件，它不仅可以对变剪接事件进行分类，还可以进行不同样本间可变剪接事件的差异分析。rMATS软件对可变剪接事件分类如下图所示：
+
+```{r echo=FALSE, out.width="30%", fig.align="center"}
+knitr::include_graphics(params$rmats_events_pic)
+```
+
+<center>**图3-25 可变剪接事件分类**</center>
+
+<center>&nbsp;</center>
+
+- **SE**：外显子跳跃
+- **MXE**: Mutually exclusive exon： 外显子互斥
+- **A5SS**: Alternative 5’ splice site：5’端外显子发生可变剪接
+- **A3SS**: Alternative 3’ splice site：3’端外显子发生可变剪接
+- **RI**: Retained intron：内含子滞留
+
+&nbsp;
+
+#### 3.7.1 差异可变剪接分析
+
+&emsp;&emsp;我们使用rMATS软件进行AS事件的定量及差异分析。rMATS软件可以将AS事件进行5种分类，并且可以对有生物学重复的样品进行差异AS分析。对检测的结果按照差异显著性标准（FDR < `r params$rmats_fdr_cutoff`，|IncLevelDifference| > `r params$rmats_diff_cutoff`）进行筛选，展示结果如下：
+
+<center>**表3-12 差异可变剪接分类和数量统计表**</center>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+rmats_diff_stats_df <- read.table(
+  params$rmats_diff_stats, 
+  header = T, 
+  na.strings = c("NA"), 
+  sep = "\t"
+)
+
+datatable(
+  rmats_diff_stats_df,
+  class = "hover cell-border order-column stripe",
+  rownames = FALSE,
+  extensions = c("Scroller", "FixedColumns", "Buttons"),
+  colnames = c("Contrast", "Event", "JC_Up", "JC_Down"),
+  option = list(
+    pageLength = 5,
+    dom = 'Blfrtip',
+    buttons = c('copy', 'excel', 'print'),
+    columnDefs = list(list(className = 'dt-center', targets = "_all")),
+    initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().header()).css({'background-color': '#377EB8', 'color': 'white'});",
+        "}")
+  )
+)
+```
+
+<center>**说明** Contrast：比较组（实验处理组-vs-对照组）; Event：差异AS事件类型（A3SS,A5SS,MXE,RI,SE）；JC_Up：使用Junction Counts进行差异AS事件检测上调的个数；JC_Down：使用Junction Counts进行差异AS事件检测下调的个数。</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;**结果文件：**
+
+- 五类AS事件的rMATS原始分析结果文件：results/06.alternative_splicing/\*/all.\*.MATS.JC.xls；
+- 五类差异AS事件结果文件：results/06.alternative_splicing/\*/diff.\*.MATS.JC.xls；
+- 五类差异AS事件数量统计汇总表：results/06.alternative_splicing/diff_alternative_splicing_stats.xls。
+
+&nbsp;
+
+#### 3.7.2 差异可变剪接可视化
+
+&emsp;&emsp;对于表达差异显著性的AS事件，使用rmats2sashimiplot（[https://github.com/Xinglab/rmats2sashimiplot](https://github.com/Xinglab/rmats2sashimiplot)）软件对五类差异AS事件中top20的结果进行可视化展示。以SE类型的AS事件为例，可视化展示的**示例**如下图所示：
+
+```{r echo=FALSE, out.width="60%", fig.align="center"}
+knitr::include_graphics(params$rmats2sashimiplot_example_plot)
+```
+
+<center>**图3-26 差异可变剪接结构图示例**</center>
+
+<center>&nbsp;</center>
+
+<center>**说明** 图中标题为可变剪接事件三个外显子所在的染色体坐标及正负链信息，跨外显子比对的reads使用连接外显子junction边界的弧线表示。弧线的粗细和比对到junction上的reads数成正比，同时弧线上的数字指出了junction reads的数目，右上方标注了各个样本可变剪接事件所在的基因及IncLevel值。</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;**结果文件：**
+
+- 五类差异AS事件中top20的结构示例图：results/06.alternative_splicing/\*/top20.diff.\*.MATS.JC.plot.zip。
+
+&nbsp;
+
+<div style= "float:left;width:80px">
+```{r echo=FALSE}
+knitr::include_graphics(params$logo)
+```
+</div>
+
+<p style="text-align:right;line-height:0%;"><font size="1">
+杭州广科安德生物科技有限公司
+</font></p>
+
+***
+
+&nbsp;
+
+### 3.8 变异位点分析
+
+&emsp;&emsp;SNP（Single Nucleotide Polymorphisms）是指在基因组上由单个核苷酸变异形成的遗传标记，其数量很多，多态性丰富。一般而言，SNP是指变异频率大于1%的单核苷酸变异。InDel（Insertion-Deletion）是指相对于参考基因组，样本中发生的小片段的插入缺失，该插入缺失可能含一个或多个碱基。
+
+&emsp;&emsp;变异位点分析是RNA-seq结构分析的重要内容，主要包括先天变异位点和后天体细胞突变位点的检测，对肿瘤等研究具有重要意义。我们使⽤BCFtools<sup>[25]</sup>软件对样本数据进行变异位点分析，并⽤SnpEff<sup>[26]</sup>软件对变异位点进行注释。
+
+#### 3.8.1 变异位点检测 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;变异位点主要分为SNP与INDEL，各个样本前50个变异位点的基因型及注释如下表所示（完整结果请查看结果文件）：
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+sample_list <- read.table(params$meta_data_file, header=TRUE, sep="\t")[["sample"]]
+
+for (sample in sample_list) {
+  f <- file.path(params$var_dir, "var_annotate", sample, paste(sample, "variants.ann.xls", sep="."))
+
+  var_df <- read.table(
+    f,
+    header = T,
+    na.strings = c("NA"),
+    sep = "\t"
+  ) %>%
+    slice(1:50)
+
+  cat("##### ", sample, " \n")
+  cat("\n")
+  cat("<center>**表3-13 变异位点注释部分结果展示表**</center>", " \n")
+  cat(knitr::knit_print(DT::datatable(
+    var_df,
+    class = "hover cell-border order-column stripe",
+    rownames = FALSE,
+    extensions = c("Scroller", "FixedColumns", "Buttons"),
+    option = list(
+      scrollX = TRUE,
+      pageLength = 5,
+      dom = 'Blfrtip',
+      buttons = c('copy', 'excel', 'print'),
+      columnDefs = list(list(className = 'dt-center', targets = "_all")),
+      initComplete = JS(
+          "function(settings, json) {",
+          "$(this.api().table().header()).css({'background-color': '#377EB8', 'color': 'white'});",
+          "}")
+    )
+  )))
+  cat("<center>**说明** CHROM：变异位点所在的染色体编号；POS：变异位点所在的染色体坐标；REF：变异位点在参考基因组中的碱基；ALT：变异位点在样本中的实际碱基；QUAL：变异位点质量，Phred格式的数值，数值越高，变异位点基因型的可信度越高；DP：变异位点在样本中的测序深度；AD：分别支持REF与ALT的reads数，中间以逗号相隔；GT：变异位点的基因型；GeneID：变异位点所在的基因编号；GeneName：变异位点所在的基因名称；FeatureID：变异位点所在的转录本编号；Biotype：变异位点所在的转录本类型；HGVS.c：变异位点在DNA水平的HGVS注释；HGVS.p：变异位点在蛋白水平的HGVS注释，仅针对编码蛋白基因；Effect：变异位点所造成的影响；Impact：变异位点所造成的影响程度。</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("\n")
+}
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- SnpEff注释过的变异位点VCF文件：results/07.variants/var_annotate/\*/\*.variants.ann.vcf；
+- SnpEff注释过的变异位点表格文件：results/07.variants/var_annotate/\*/\*.variants.ann.xls。
+
+&nbsp;
+
+#### 3.8.2 变异位点统计 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;使用BCFtools进行变异位点的检测后，我们会根据SnpEff注释信息对每个变异位点进行统计，主要为变异位点功能统计、区域统计以及影响统计：
+
+- 变异位点功能（var_function）从MISSENSE（错义突变）、NONSENSE（无义突变）、SILENT（沉默突变）三个方面进行统计和绘图；
+- 变异位点区域（var_region）从EXON（外显子）、INTRON（内含子）、INTERGENIC（基因间区）等基因结构区域进行统计和绘图；
+- 变异位点影响（var_impact）从HIGH（高）、MODERATE（中）、LOW（低）、MODIFIER（自身无表型效应，和别的突变位点同时存在才会产生影响）四个层次进行统计和绘图；
+
+&emsp;&emsp;统计图如下所示：
+
+```{r, echo=FALSE, results='asis'}
+
+vay_type_list <- c("var_function", "var_impact", "var_region")
+
+for (type in vay_type_list) {
+    var_type_plot <- file.path(params$var_dir, "var_stats", paste(type, "stats.png", sep="_"))
+    cat("##### ", type, " \n")
+    cat("\n")
+    cat("![](", var_type_plot, "){width=50%}", "\n")
+    cat("<center>**图3-27 变异位点统计图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    
+    if (type == "var_function") {
+      cat("<center>**说明** 图中横坐标表示样本名称，纵坐标表示根据不同变异位点功能的数目统计，分为MISSENSE（错义突变）、NONSENSE（无义突变）、SILENT（沉默突变）三个方面。</center>", "\n")
+    } else if (type == "var_impact") {
+      cat("<center>**说明** 图中横坐标表示样本名称，纵坐标表示根据不同变异位点影响的数目统计，分为HIGH(高)、MODERATE（中）、LOW（低）、MODIFIER（自身无表型效应，和别的突变位点同时存在才会产生影响）四个层次。</center>", "\n")
+    } else if (type == "var_region") {
+      cat("<center>**说明** 图中横坐标表示样本名称，纵坐标表示根据不同变异位点区域的数目统计，分为EXON（外显子）、INTRON（内含子）、INTERGENIC（基因间区）等基因结构区域。</center>", "\n")
+    }
+
+    cat("<center>&nbsp;</center>", "\n")
+    cat("\n")
+}
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 变异位点功能统计结果文件：results/07.variants/var_stats/var_function_stats.\*；
+- 变异位点影响统计结果文件：results/07.variants/var_stats/var_impact_stats.\*；
+- 变异位点区域统计结果文件：results/07.variants/var_stats/var_region_stats.\*。
+
+&nbsp;
+
+&nbsp;
+
+<div style= "float:left;width:80px">
+```{r echo=FALSE}
+knitr::include_graphics(params$logo)
+```
+</div>
+
+<p style="text-align:right;line-height:0%;"><font size="1">
+杭州广科安德生物科技有限公司
+</font></p>
+
+***
+
+&nbsp;
+
+### 3.9 基因融合分析
+
+&emsp;&emsp;融合基因（Fusion Gene）是指两个基因的全部或部分序列融合而成的嵌合基因，一般由染色体易位、缺失等原因所致。融合基因首次发现于血液系统的恶性肿瘤中，其中以慢性粒细胞白血病中BCR-ABL的基因融合最为经典，治疗慢性粒细胞白血病的药物伊马替尼/格列卫，其作用靶点就是该融合基因。高通量RNA测序技术因其通量高、成本低、检测精度高检测范围广等优点大大加快了融合基因的研究，本项目使用STAR-Fusion<sup>[27]</sup>软件进行融合基因的检测，STAR-Fusion是利用STAR比对的融合输出结果来检测融合转录本的软件包。
+
+#### 3.9.1 基因融合检测 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;融合基因列表如下表所示，其中JunctionReads和SpanningFrags是检测融合基因的主要指标；在双端测序中，可以把read1和read2看成是一个fragment片段（250bp-300bp）的两端，若read1或read2跨越融合事件的断点，这样的read称为JunctionRead。read1和read2中间的gap区域横跨融合事件的断点，这样的fragment片段称为SpanningFrag。
+
+![](`r params$gene_fusion_description_pic`){width=80%}
+
+<center>**图3-28 JunctionReads和SpanningFrags示意图**</center>
+
+&nbsp;
+
+&emsp;&emsp;各样本的基因融合检测结果如下表所示：
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+
+sample_list <- read.table(params$meta_data_file, header=TRUE, sep="\t")[["sample"]]
+
+for (s in sample_list) {
+  f <- file.path(params$fusion_results_dir, s, paste0(s, ".star-fusion.fusion_predictions.tsv"))
+
+  fusion_results_df <- read.table(
+    f,
+    header = T,
+    sep = "\t",
+    comment.char = ""
+  ) %>%
+    dplyr::rename(FusionName = X.FusionName) %>%
+    dplyr::select(FusionName, JunctionReadCount, SpanningFragCount, SpliceType, LeftGene, LeftBreakpoint,
+                  RightGene, RightBreakpoint, annots)
+
+  cat("##### ", s, " \n")
+  cat("\n")
+  cat("<center>**表3-14 融合基因列表**</center>", " \n")
+  cat(knitr::knit_print(DT::datatable(
+    fusion_results_df,
+    class = "hover cell-border order-column stripe",
+    rownames = FALSE,
+    extensions = c("Scroller", "FixedColumns", "Buttons"),
+    option = list(
+      scrollX = TRUE,
+      pageLength = 5,
+      dom = 'Blfrtip',
+      buttons = c('copy', 'excel', 'print'),
+      language = list(emptyTable = "未找到基因融合!"),
+      columnDefs = list(list(className = 'dt-center', targets = "_all")),
+      initComplete = JS(
+          "function(settings, json) {",
+          "$(this.api().table().header()).css({'background-color': '#377EB8', 'color': 'white'});",
+          "}")
+    )
+  )))
+  cat("<center>**说明** FusionName：融合事件名称；JunctionReadCount：支持融合事件发生的JunctionReads数目；SpanningFragCount：支持融合事件发生的Spanning fragments数目；SpliceType：鉴定的融合断点是否位于已知基因结构的外显子剪接位点；LeftGene：融合事件的上游基因，包括基因ID和基因名称，其中基因ID为GENCODE数据库ID，去掉小数点和后面的数字即可与前面的一致；LeftBreakpoint：上游基因断点所在的基因组坐标和上游基因所在基因组的正负链信息；RightGene：融合事件的下游基因；RightBreakpoint：下游基因断点所在的基因组坐标和下游基因所在基因组的正负链信息；annots：融合事件上下游基因的功能注释信息。</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("\n")
+}
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 各样本基因融合检测结果文件：results/08.gene_fusion/star_fusion/\*/*.star-fusion.fusion_predictions.tsv。
+
+&nbsp;
+
+#### 3.9.2 基因融合可视化 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;融合基因事件在染色体上的分布用circos图进行展示，图中的环由多条染色体组成，环内每条线代表一个融合事件，线的两端代表融合事件的断点位置，红色表示融合基因的上下游基因来源于同一条染色体，蓝色表示融合基因的上下游基因来源于不同染色体，线的粗细代表融合基因的表达水平。各样本融合基因事件的circos图如下：
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+sample_list <- read.table(params$meta_data_file, header=TRUE, sep="\t")[["sample"]]
+
+for (s in sample_list) {
+  f <- file.path(params$fusion_results_dir, s, paste0(s, ".star-fusion.fusion_predictions.tsv"))
+  
+  fusion_results_df <- read.table(
+    f,
+    header = T,
+    sep = "\t",
+    comment.char = ""
+  ) %>%
+    dplyr::rename(FusionName = X.FusionName) %>%
+    dplyr::select(FusionName, JunctionReadCount, SpanningFragCount, SpliceType, LeftGene, LeftBreakpoint,
+                  RightGene, RightBreakpoint, annots)
+  
+  fusion_circos_plot <- file.path(params$fusion_results_dir, s, paste0(s, ".star-fusion.fusion_circos.png"))
+  cat("##### ", s, " \n")
+  cat("\n")
+  if (nrow(fusion_results_df) > 0){
+    cat("![](", fusion_circos_plot, "){width=60%}", "\n")
+  }
+  cat("<center>**图3-29 融合基因染色体分布circos图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("\n")
+}
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 各样本融合基因染色体分布circos图：results/08.gene_fusion/star_fusion/\*/*.star-fusion.fusion_circos.png。
+
+&nbsp;
+
+### 3.10 转录因子分析 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;转录水平调控是基因表达调控的重要环节，其中转录因子（Transcription Factor，TF）通过结合基因上游特异性核苷酸序列实现对该基因的转录调控，许多生物学功能都通过调节特异性转录因子实现对下游功能基因的激活或抑制，因此有必要注释不同分组间差异表达基因的转录组因子，使用动物转录因子数据库AnimalTFDB v4.0<sup>[28]</sup>对差异表达基因中的转录因子进行鉴定，这有助于挖掘不同分组差异表达的转录因子及其差异调控机理。转录因子注释统计结果如下表所示：
+
+```{r, echo=FALSE, results='asis'}
+contrast_list <- basename(Sys.glob(file.path(params$tf_dir, "*")))
+
+for (c in contrast_list) {
+  f <- file.path(params$tf_dir, c, paste0(c, "_TF_annotation.xls"))
+
+  tf_results_df <- read.table(
+    f,
+    header = T,
+    sep = "\t")
+
+  cat("#### ", c, " \n")
+  cat("\n")
+  cat("<center>**表3-15 转录因子注释结果**</center>", " \n")
+  cat(knitr::knit_print(DT::datatable(
+    tf_results_df,
+    class = "hover cell-border order-column stripe",
+    rownames = FALSE,
+    extensions = c("Scroller", "FixedColumns", "Buttons"),
+    option = list(
+      scrollX = TRUE,
+      pageLength = 5,
+      dom = 'Blfrtip',
+      buttons = c('copy', 'excel', 'print'),
+      columnDefs = list(list(className = 'dt-center', targets = "_all")),
+      language = list(emptyTable = "在差异表达基因中未鉴定到转录因子!"),
+      initComplete = JS(
+          "function(settings, json) {",
+          "$(this.api().table().header()).css({'background-color': '#377EB8', 'color': 'white'});",
+          "}")
+    )
+  )))
+  cat("<center>**说明** Gene_ID：Ensembl基因ID；Symbol：基因通用名称；log2FoldChange：处理组与对照组基因表达量差异倍数的对数值（以2为底取对数）；padj：多重假设检验校正后的p值；Regulated：基因上调/下调；Family：转录因子所属的家族。</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("\n")
+}
+```
+
+### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 各比较组合差异表达基因的转录因子注释结果文件：results/09.transcription_factor/\*/*_TF_annotation.xls。
+
+&nbsp;
+
+<div style= "float:left;width:80px">
+```{r echo=FALSE}
+knitr::include_graphics(params$logo)
+```
+</div>
+
+<p style="text-align:right;line-height:0%;"><font size="1">
+杭州广科安德生物科技有限公司
+</font></p>
+
+***
+
+&nbsp;
+
+### 3.11 新转录本预测
+
+&emsp;&emsp;现有数据库中对转录本的注释可能还不全面，通过高通量测序我们能检测到新的转录本。将所有样本测序数据的参考基因组基因组比对结果放到一起，用 StringTie<sup>[29]</sup>进行转录本组装，然后用Cuffcompare<sup>[30]</sup>和已知的参考基因组注释信息(*.gtf)进行比较，可以(1) 发现新的未知基因（相对于原有基因注释文件）；(2) 发现已知基因新的外显子区域；(3) 对已知基因的起始和终止位置进行优化。
+
+&emsp;&emsp;新基因和新外显子区域预测结果为GTF格式的注释文件，部分新转录本结构注释结果和已知基因结构优化结果（前50条结果，完整结果请查看结果文件）如下表所示：
+
+<center>**表3-16 新转录本结构注释部分结果展示表**</center>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+cuffcmp_gtf_df <- read.table(
+  params$cuffcmp_gtf, 
+  header = F, 
+  sep = "\t"
+) %>% 
+  slice(1:50)
+
+datatable(
+  cuffcmp_gtf_df,
+  class = "hover cell-border order-column stripe",
+  rownames = FALSE,
+  extensions = c("Scroller", "FixedColumns", "Buttons"),
+  colnames = c("Chromosome", "Source", "Feature",
+               "Start", "End", "Score", 
+               "Strand", "Frame", "Attributes"),
+  option = list(
+    scrollX = TRUE,
+    pageLength = 5,
+    dom = 'Blfrtip',
+    buttons = c('copy', 'excel', 'print'),
+    columnDefs = list(list(className = 'dt-center', targets = "_all")),
+    initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().header()).css({'background-color': '#377EB8', 'color': 'white'});",
+        "}")
+  )
+)
+```
+
+<center>**说明** Chromosome：染色体编号；Source：注释信息的来源，StringTie软件；Feature：注释特征类型；Start：特征序列的起始位置；End：特征序列的终止位置；Score：得分，数字，注释信息可能性的说明，“.”表示缺失值；Strand：特征序列所在的正负链；Phase：仅对注释类型为CDS有效，表示起始编码的位置，有效值为0、1、2，“.”表示缺失值；Attributes：属性，包括基因编号、转录本编号等信息。</center>
+
+&nbsp;
+
+<center>**表3-17 已知基因结构优化部分结果展示表**</center>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+cuffcmp_novel_gene_df <- read.table(
+  params$cuffcmp_novel_gene, 
+  header = T, 
+  sep = "\t"
+) %>% 
+  slice(1:50)
+
+datatable(
+  cuffcmp_novel_gene_df,
+  class = "hover cell-border order-column stripe",
+  rownames = FALSE,
+  extensions = c("Scroller", "FixedColumns", "Buttons"),
+  option = list(
+    scrollX = TRUE,
+    pageLength = 5,
+    dom = 'Blfrtip',
+    buttons = c('copy', 'excel', 'print'),
+    columnDefs = list(list(className = 'dt-center', targets = "_all")),
+    initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().header()).css({'background-color': '#377EB8', 'color': 'white'});",
+        "}")
+  )
+)
+```
+
+<center>**说明** Gene_id：基因命名编号；Chromosome：染色体编号；Strand：正负链信息；Original_span：原注释文件中基因以及起始位置-终止位置；Assembled_span：转录组拼接结果中基因起始位置-终止位置。</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;**结果文件：**
+
+- 新转录本结构注释结果GTF文件：results/10.novel_transcript/cuffcmp.combined.gtf；
+- 已知基因结构优化结果文件：results/10.novel_transcript/optimized.gene.xls。
+
+&nbsp;
+
+<div style= "float:left;width:80px">
+```{r echo=FALSE}
+knitr::include_graphics(params$logo)
+```
+</div>
+
+<p style="text-align:right;line-height:0%;"><font size="1">
+杭州广科安德生物科技有限公司
+</font></p>
+
+***
+
+&nbsp;
+
+### 3.12 差异外显子分析 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;（**差异外显子分析仅针对具有生物学重复的样本**）RNA-seq除了gene水平的差异分析外，还可以进行exon水平的差异分析。对于有生物学重复的样本，采用DEXSeq[31]进行差异外显子分析（Differential Exon Usage，DEU）。将padj < `r round(as.numeric(params$dexseq_padj_cutoff), 2)` 作为筛选外显子差异表达的标准。通过DEU分析，可以从外显子的水平上了解不同组样本间的表达差异，进一步了解哪些外显子影响了功能基因的表达，并结合可变剪切等外显子结构变化事件了解详细的基因表达调控机制。部分差异外显子分析结果（前50条结果，完整结果请查看结果文件）如下表所示：
+
+```{r, echo=FALSE, results='asis'}
+contrast_list <- basename(list.dirs(params$dexseq_dir, recursive = FALSE))
+
+for (c in contrast_list) {
+  f <- file.path(params$dexseq_dir, c, paste0(c, "_diffexon.xls"))
+
+  dexseq_results_df <- read.table(
+    f,
+    header = T,
+    sep = "\t") %>%
+    slice(1:50)
+  
+  dexseq_results_df <- dexseq_results_df[,c(2,3,11,7,8)]
+
+  cat("#### ", c, " \n")
+  cat("\n")
+  cat("<center>**表3-18 差异外显子分析部分结果展示表**</center>", " \n")
+  cat(knitr::knit_print(DT::datatable(
+    dexseq_results_df,
+    class = "hover cell-border order-column stripe",
+    rownames = FALSE,
+    extensions = c("Scroller", "FixedColumns", "Buttons"),
+    colnames = c("geneID", "exonID", "log2(FC)", "pvalue", "padj"),
+    option = list(
+      scrollX = TRUE,
+      pageLength = 5,
+      dom = 'Blfrtip',
+      buttons = c('copy', 'excel', 'print'),
+      columnDefs = list(list(className = 'dt-center', targets = "_all")),
+      language = list(emptyTable = "未找到差异外显子!"),
+      initComplete = JS(
+          "function(settings, json) {",
+          "$(this.api().table().header()).css({'background-color': '#377EB8', 'color': 'white'});",
+          "}")
+    )
+  )))
+  cat("<center>**说明** geneID：基因编号；exonID：外显子编号；log2(FC)：表达量差异倍数的对数值；pvalue: 差异显著性p值；padj：多重假设检验校正后的p值。</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("\n")
+}
+```
+
+### {- .toc-ignore}
+
+&emsp;&emsp;DEXSeq还可以生成差异外显子模式图，**示例**如下：
+
+```{r echo=FALSE, out.width="60%", fig.align="center"}
+knitr::include_graphics(params$dexseq_example_pic)
+```
+
+<center>**图3-30 差异外显子模式图示例**</center>
+
+<center>&nbsp;</center>
+
+<center>**说明** 纵轴表示两组样本各自在外显子上的表达值，横轴表示外显子编号，差异外显子被紫红色高亮在这个外显子所在的转录本上面。</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;**结果文件：**
+
+- 差异外显子分析结果文件：results/11.diff_exon_uasge/\*/\*_diffexon.xls；
+- top50差异外显子模式图：results/11.diff_exon_uasge/\*/\*_diffexon_plot_top50.zip。
+
+&nbsp;
+
+<div style= "float:left;width:80px">
+```{r echo=FALSE}
+knitr::include_graphics(params$logo)
+```
+</div>
+
+<p style="text-align:right;line-height:0%;"><font size="1">
+杭州广科安德生物科技有限公司
+</font></p>
+
+***
+
+&nbsp;
+
+## 4. 参考文献
+
+***
+
+[1] Wang, Zhong et al. “RNA-Seq: a revolutionary tool for transcriptomics.” Nature reviews. Genetics vol. 10,1 (2009): 57-63. doi:10.1038/nrg2484
+
+[2] Ewing, B et al. “Base-calling of automated sequencer traces using phred. I. Accuracy assessment.” Genome research vol. 8,3 (1998): 175-85. doi:10.1101/gr.8.3.175
+
+[3] Chen, Shifu et al. “fastp: an ultra-fast all-in-one FASTQ preprocessor.” Bioinformatics (Oxford, England) vol. 34,17 (2018): i884-i890. doi:10.1093/bioinformatics/bty560
+
+[4] Kim, Daehwan et al. “Graph-based genome alignment and genotyping with HISAT2 and HISAT-genotype.” Nature biotechnology vol. 37,8 (2019): 907-915. doi:10.1038/s41587-019-0201-4
+
+[5] Wang, Liguo et al. “RSeQC: quality control of RNA-seq experiments.” Bioinformatics (Oxford, England) vol. 28,16 (2012): 2184-5. doi:10.1093/bioinformatics/bts356
+
+[6] Trapnell, Cole et al. “Transcript assembly and quantification by RNA-Seq reveals unannotated transcripts and isoform switching during cell differentiation.” Nature biotechnology vol. 28,5 (2010): 511-5. doi:10.1038/nbt.1621
+
+[7] Liao, Yang et al. “featureCounts: an efficient general purpose program for assigning sequence reads to genomic features.” Bioinformatics (Oxford, England) vol. 30,7 (2014): 923-30. doi:10.1093/bioinformatics/btt656
+
+[8] Hansen, Kasper D et al. “Sequencing technology does not eliminate biological variability.” Nature biotechnology vol. 29,7 572-3. 11 Jul. 2011, doi:10.1038/nbt.1910
+
+[9] Robasky, Kimberly et al. “The role of replicates for error mitigation in next-generation sequencing.” Nature reviews. Genetics vol. 15,1 (2014): 56-62. doi:10.1038/nrg3655
+
+[10] Liu, Moyang et al. “Insights into the correlation between Physiological changes in and seed development of tartary buckwheat (Fagopyrum tataricum Gaertn.).” BMC genomics vol. 19,1 648. 31 Aug. 2018, doi:10.1186/s12864-018-5036-8
+
+[11] Love, Michael I et al. “Moderated estimation of fold change and dispersion for RNA-seq data with DESeq2.” Genome biology vol. 15,12 (2014): 550. doi:10.1186/s13059-014-0550-8
+
+[12] Robinson, Mark D et al. “edgeR: a Bioconductor package for differential expression analysis of digital gene expression data.” Bioinformatics (Oxford, England) vol. 26,1 (2010): 139-40. doi:10.1093/bioinformatics/btp616
+
+[13] Ashburner, M et al. “Gene ontology: tool for the unification of biology. The Gene Ontology Consortium.” Nature genetics vol. 25,1 (2000): 25-9. doi:10.1038/75556
+
+[14] Yu, Guangchuang et al. “clusterProfiler: an R package for comparing biological themes among gene clusters.” Omics : a journal of integrative biology vol. 16,5 (2012): 284-7. doi:10.1089/omi.2011.0118
+
+[15] Kanehisa, M, and S Goto. “KEGG: kyoto encyclopedia of genes and genomes.” Nucleic acids research vol. 28,1 (2000): 27-30. doi:10.1093/nar/28.1.27
+
+[16] Wu, Guanming, and Robin Haw. “Functional Interaction Network Construction and Analysis for Disease Discovery.” Methods in molecular biology (Clifton, N.J.) vol. 1558 (2017): 235-253. doi:10.1007/978-1-4939-6783-4_11
+
+[17] Yu, Guangchuang, and Qing-Yu He. “ReactomePA: an R/Bioconductor package for reactome pathway analysis and visualization.” Molecular bioSystems vol. 12,2 (2016): 477-9. doi:10.1039/c5mb00663e
+
+[18] Schriml, Lynn M et al. “Human Disease Ontology 2018 update: classification, content and workflow expansion.” Nucleic acids research vol. 47,D1 (2019): D955-D962. doi:10.1093/nar/gky1032
+
+[19] Yu, Guangchuang et al. “DOSE: an R/Bioconductor package for disease ontology semantic and enrichment analysis.” Bioinformatics (Oxford, England) vol. 31,4 (2015): 608-9. doi:10.1093/bioinformatics/btu684
+
+[20] Subramanian, Aravind et al. “Gene set enrichment analysis: a knowledge-based approach for interpreting genome-wide expression profiles.” Proceedings of the National Academy of Sciences of the United States of America vol. 102,43 (2005): 15545-50. doi:10.1073/pnas.0506580102
+
+[21] Franceschini, Andrea et al. “STRING v9.1: protein-protein interaction networks, with increased coverage and integration.” Nucleic acids research vol. 41,Database issue (2013): D808-15. doi:10.1093/nar/gks1094
+
+[22] Altschul, S F et al. “Gapped BLAST and PSI-BLAST: a new generation of protein database search programs.” Nucleic acids research vol. 25,17 (1997): 3389-402. doi:10.1093/nar/25.17.3389
+
+[23] Shannon, Paul et al. “Cytoscape: a software environment for integrated models of biomolecular interaction networks.” Genome research vol. 13,11 (2003): 2498-504. doi:10.1101/gr.1239303
+
+[24] Shen, Shihao et al. “rMATS: robust and flexible detection of differential alternative splicing from replicate RNA-Seq data.” Proceedings of the National Academy of Sciences of the United States of America vol. 111,51 (2014): E5593-601. doi:10.1073/pnas.1419161111
+
+[25] Li, Heng. “A statistical framework for SNP calling, mutation discovery, association mapping and population genetical parameter estimation from sequencing data.” Bioinformatics (Oxford, England) vol. 27,21 (2011): 2987-93. doi:10.1093/bioinformatics/btr509
+
+[26] Cingolani, Pablo et al. “A program for annotating and predicting the effects of single nucleotide polymorphisms, SnpEff: SNPs in the genome of Drosophila melanogaster strain w1118; iso-2; iso-3.” Fly vol. 6,2 (2012): 80-92. doi:10.4161/fly.19695
+
+[27] Haas, Brian J et al. “Accuracy assessment of fusion transcript detection via read-mapping and de novo fusion transcript assembly-based methods.” Genome biology vol. 20,1 213. 21 Oct. 2019, doi:10.1186/s13059-019-1842-9
+
+[28] Shen, Wen-Kang et al. “AnimalTFDB 4.0: a comprehensive animal transcription factor database updated with variation and expression annotations.” Nucleic acids research vol. 51,D1 (2023): D39-D45. doi:10.1093/nar/gkac907
+
+[29] Pertea, Mihaela et al. “StringTie enables improved reconstruction of a transcriptome from RNA-seq reads.” Nature biotechnology vol. 33,3 (2015): 290-5. doi:10.1038/nbt.3122
+
+[30] Trapnell, Cole et al. “Transcript assembly and quantification by RNA-Seq reveals unannotated transcripts and isoform switching during cell differentiation.” Nature biotechnology vol. 28,5 (2010): 511-5. doi:10.1038/nbt.1621
+
+[31] Anders, Simon et al. “Detecting differential usage of exons from RNA-seq data.” Genome research vol. 22,10 (2012): 2008-17. doi:10.1101/gr.133744.111
+ 
+&nbsp;
+
+<div style= "float:left;width:80px">
+```{r echo=FALSE}
+knitr::include_graphics(params$logo)
+```
+</div>
+
+<p style="text-align:right;line-height:0%;"><font size="1">
+杭州广科安德生物科技有限公司
+</font></p>
+
+***
+
+&nbsp;
+
+## 5. 附录
+
+***
+
+### 5.1 结果文件说明
+
+&emsp;&emsp;请参见[结果文件说明文档](结果文件说明文档.pdf)。
+
+&nbsp;
+
+### 5.2 备注
+
+&emsp;&emsp;结果文件建议使用Excel或者EditPlus等专业文本编辑器打开。
+
+&emsp;&emsp;推荐使用Chrome浏览器进行网页版结题报告浏览，下载地址：[https://www.google.cn/intl/zh-CN/chrome/](https://www.google.cn/intl/zh-CN/chrome/)
+
+&emsp;&emsp;客服电话：86-571-83693553
+
+&emsp;&emsp;问题反馈邮箱：service@cwmda.com
+
+&nbsp;
+
+<div style= "float:left;width:80px">
+```{r echo=FALSE}
+knitr::include_graphics(params$logo)
+```
+</div>
+
+<p style="text-align:right;line-height:0%;"><font size="1">
+杭州广科安德生物科技有限公司
+</font></p>
+
+***
+
+<center>如有疑问请咨询项目销售或运营，我们将竭诚为您服务。感谢您对[广科安德](https://www.cwmda.com/)的信任！</center>
+
+&nbsp;
+
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>

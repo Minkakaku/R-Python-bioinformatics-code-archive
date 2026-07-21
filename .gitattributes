@@ -1,0 +1,2 @@
+# Preserve exact collected bytes so CHECKSUMS.sha256 remains portable.
+* -text

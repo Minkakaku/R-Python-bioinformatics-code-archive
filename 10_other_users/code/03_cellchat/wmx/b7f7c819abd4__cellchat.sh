@@ -1,0 +1,1 @@
+Rscript /mnt/NexData_file/home/wmx/SC2601280737/SC2601280737_shouhou1/pip_cellchat.R --rds /mnt/NexData_file/home/wmx/SC2601280737/SC2601280737_shouhou1/cellchat/T_epith_combined.rds --outpath /mnt/NexData_file/home/wmx/SC2601280737/SC2601280737_shouhou1/cellchat/ --splitby group --species mouse --comparison "CON:KO,KO:CON"

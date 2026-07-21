@@ -1,0 +1,1 @@
+Rscript /mnt/NexData_file/home/wmx/Project/SC2512227719-01/shouhou5/pip_cellchat_truncatedMean.R --rds '/mnt/NexData_file/home/wmx/Project/SC2512227719-01/shouhou4/for_cellchat.rds' --outpath /mnt/NexData_file/home/wmx/Project/SC2512227719-01/shouhou5/cellchat/ --splitby group --species mouse --comparison "C:CKO,CKO:C"

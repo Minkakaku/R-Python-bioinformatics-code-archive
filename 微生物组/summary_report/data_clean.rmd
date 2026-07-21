@@ -1,0 +1,191 @@
+### 4.1 测序数据质控
+
+#### 4.1.1 测序数据说明
+
+&emsp;&emsp;Illumina高通量测序平台对DNA文库进行测序，产出大量的高质量Data，称为原始数据（Raw Data）。测序片段被高通量测序仪测得的图像数据经CASAVA碱基识别转化为序列数据（reads），文件为fastq格式，其中主要包含测序片段的序列信息以及其对应的测序质量信息。
+
+&emsp;&emsp;fastq格式文件中每个read由四行描述信息组成，如下所示：
+
+&emsp;&emsp;&emsp;**@A01927:53:HLT5WDSX3:5:1101:6745:1924 1:N:0:ACGCTCGA**  
+&emsp;&emsp;&emsp;**CAGCTGGAAGATCGCAGGAGTACCACCGACCTGAGGGGGACCCAGTTTGACTATTGG**  
+&emsp;&emsp;&emsp;**+**  
+&emsp;&emsp;&emsp;**AA&lt-FFFFFF&ltJJFFJJFJJJ&ltFJJJJJJJJFJJJJFJJJJJAFJ7FJJJJ**
+
+&emsp;&emsp;上述文件中第一行以“@”开头，随后为Illumina测序标识符(Squence Identifiers)和描述文字；第二行是测序片段的碱基序列；第三行以“+”开头，随后为Illumina测序标识符(也可为空)；第四行是测序片段每个碱基相对应的测序质量值，该行中每个字符对应的ASCII值减去33，即为该碱基的测序质量值。
+
+&nbsp;
+
+#### 4.1.2 测序错误率分布 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;测序过程本身存在机器错误的可能性，测序错误率分布检查可以反映测序数据的质量，序列信息中每个碱基的测序质量值保存在fastq文件中。如果测序错误率用e<sup>[4]</sup>表示，Illumina的碱基质量值用Q<sub>phred</sub>表示，则有：
+
+$$
+\begin{aligned}
+ Q_{phred} = -10 * \log_{10} e
+\end{aligned}
+$$
+
+&emsp;&emsp;Illumina Casava 1.8版本碱基识别与Phred分值之间的简明对应关系见下表:
+
+<center>**表3.1.2-1 Illumina Casava 1.8版本碱基识别与Phred分值之间的简明对应关系**</center>
+
+<center>&nbsp;</center>
+
+<center>
+<style type="text/css">
+.tg  {border-collapse:collapse;border-color:#9ABAD9;border-spacing:0;}
+.tg td{background-color:#EBF5FF;border-color:#9ABAD9;border-style:solid;border-width:0px;color:#444;
+  font-family:Arial, sans-serif;font-size:14px;overflow:hidden;padding:10px 20px;word-break:normal;}
+.tg th{background-color:#377EB8;border-color:#9ABAD9;border-style:solid;border-width:0px;color:#fff;
+  font-family:Arial, sans-serif;font-size:14px;font-weight:normal;overflow:hidden;padding:10px 20px;word-break:normal;}
+.tg .tg-1wig{background-color:#377EB8;font-weight:bold;text-align:left;vertical-align:top}
+.tg .tg-5cz4{background-color:#D2E4FC;border-color:inherit;text-align:center;vertical-align:middle}
+.tg .tg-baqh{text-align:center;vertical-align:top}
+.tg .tg-7btt{background-color:#377EB8;border-color:inherit;font-weight:bold;text-align:center;vertical-align:top}
+.tg .tg-j0tj{background-color:#D2E4FC;text-align:center;vertical-align:top}
+</style>
+<table class="tg">
+<thead>
+  <tr>
+    <th class="tg-7btt">Phred分值</th>
+    <th class="tg-7btt">碱基识别错误的概率</th>
+    <th class="tg-7btt">碱基识别精度</th>
+    <th class="tg-1wig">碱基质量值</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td class="tg-5cz4">10</td>
+    <td class="tg-5cz4">1/10</td>
+    <td class="tg-5cz4">90%</td>
+    <td class="tg-j0tj">Q10</td>
+  </tr>
+  <tr>
+    <td class="tg-baqh">20</td>
+    <td class="tg-baqh">1/100</td>
+    <td class="tg-baqh">99%</td>
+    <td class="tg-baqh">Q20</td>
+  </tr>
+  <tr>
+    <td class="tg-j0tj">30</td>
+    <td class="tg-j0tj">1/1000</td>
+    <td class="tg-j0tj">99.9%</td>
+    <td class="tg-j0tj">Q30</td>
+  </tr>
+  <tr>
+    <td class="tg-baqh">40</td>
+    <td class="tg-baqh">1/10000</td>
+    <td class="tg-baqh">99.99%</td>
+    <td class="tg-baqh">Q40</td>
+  </tr>
+</tbody>
+</table>
+</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;测序错误率受测序仪本身、测序试剂、样品等多个因素共同影响。由于测序过程中化学试剂的消耗，测序错误率会随着测序序列（Sequenced Reads）长度的增加而升高，是Illumina高通量测序平台所具有的特征。本项目各样本原始测序数据碱基质量分布图如下：
+
+```{r, echo=FALSE, results='asis'}
+
+sample_list <- list.dirs(params$fastq_qc_plot_dir, recursive = FALSE, full.names = FALSE)
+
+for (sample in sample_list) {
+  pic <- file.path(params$fastq_qc_plot_dir, sample, paste0(sample, "_quality.png"))
+  cat("##### ", sample, " \n")
+  cat("\n")
+  cat("![](", pic, "){width=50%}", "\n")
+  cat("<center>**图4.1.2-1 原始测序数据碱基质量分布图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** 图中横坐标为reads的碱基位置，纵坐标为碱基质量值。</center>", "\n")
+  cat("<center>&nbsp;<center>", "\n")
+  cat("\n")
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 各样本原始测序数据错误率分布图：results/01.data_clean/fastq_qc_plot/\*/\*_error.{pdf,png}；
+- 各样本原始测序数据测序质量分布图：results/01.data_clean/fastq_qc_plot/\*/\*_quality.{pdf,png}。
+
+&nbsp;
+
+#### 4.1.3 测序数据过滤和统计 {.tabset .tabset-dropdown}
+
+&emsp;&emsp;首先使用fastp<sup>[5]</sup>软件，对测序得到的Raw Reads进行过滤；然后使用cutadapt<sup>[6]</sup>软件进行引物序列的识别与去除，得到不包含引物序列的Clean Reads; 接下来使用QIIME2<sup>[7]</sup>中的DADA2<sup>[8]</sup>方法进行去噪（Denoised Reads），双端序列拼接（Merged Reads）并去除嵌合体序列，得到最终有效数据（Non-chimeric Reads）。
+
+&emsp;&emsp;通过统计数据处理各阶段样品序列数目，评估数据质量。主要通过统计各阶段的序列数，序列长度等参数对数据进行评估。测序数据过滤各阶段的序列数统计结果如下表所示：
+
+<center>**表4.1.3-1 测序数据过滤结果统计表**</center>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+reads_qc_stats_df <- read.table(
+  params$reads_qc_stats, 
+  header = T,
+  row.names = NULL,
+  na.strings = c("NA"), 
+  sep = "\t",
+  comment.char = "#",
+  check.names = F
+)
+
+js <- c(
+  "function(thead, data, start, end, display) {",
+  "  $('th', thead).css({'background-color': '#377EB8', 'color': 'white'});",
+  "}"
+)
+
+datatable(
+  reads_qc_stats_df,
+  class = "hover cell-border order-column stripe",
+  rownames = FALSE,
+  extensions = c("Scroller", "FixedColumns", "Buttons"),
+  colnames = c("Sample ID", "Raw Reads", "Clean Reads", "Denoised Reads", "Merged Reads", "Non-chimeric Reads"),
+  option = list(
+    fixedColumns = list(leftColumns = 1),
+    scrollX = TRUE,
+    pageLength = 5,
+    dom = 'Blfrtip',
+    buttons = c('copy', 'excel', 'print'),
+    columnDefs = list(list(className = 'dt-center', targets = "_all")),
+    headerCallback = JS(js)
+  )
+)
+```
+
+<center>**说明** **Sample ID**：样本名称；**Raw Reads**：测序得到的原始序列条数；**Clean Reads**：原始序列质控后得到的高质量序列条数；**Denoised Reads**：Clean Reads去噪后的序列条数；**Merged Reads**：Denoised Reads根据overlap拼接后得到的序列条数；**Non-chimeric Reads**：最终去除完嵌合体后的序列条数。</center>
+
+<center>&nbsp;</center>
+
+&emsp;&emsp;质控过滤后，各样本中相应长度范围内的序列数分布如下图所示：
+
+```{r, echo=FALSE, results='asis'}
+
+sample_list <- read.table(params$metadata, header=TRUE, sep="\t")[["SampleID"]]
+
+for (sample in sample_list) {
+  pic <- file.path(params$reads_length_barplot_dir, sample, paste0(sample, ".reads_length.png"))
+  cat("##### ", sample, " \n")
+  cat("\n")
+  cat("![](", pic, "){width=60%}", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**图4.1.3-1 质控过滤后序列长度分布图**</center>", "\n")
+  cat("<center>&nbsp;</center>", "\n")
+  cat("<center>**说明** 图中横坐标为序列长度范围，纵坐标为序列条数。</center>", "\n")
+  cat("<center>&nbsp;<center>", "\n")
+  cat("\n")
+}
+
+```
+
+#### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 测序原始数据文件目录：results/00.rawdata；
+- 测序有效数据文件目录：results/01.data_clean/cleandata；
+- 测序数据质控结果汇总表：results/01.data_clean/all_reads_qc_stats.xls；
+- 质控过滤后序列长度分布图和数据表格：results/01.data_clean/reads_length_barplot/\*.reads_length.{pdf,png,xls}。

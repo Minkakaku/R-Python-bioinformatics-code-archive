@@ -1,0 +1,249 @@
+---
+title: "<center> 基因集打分结果报告 </center>"
+author:
+  - name: "<center> 杭州广科安德生物科技有限公司 </center>"
+runtime: static
+output:
+  html_document:
+    keep_md: false
+    toc: yes
+    toc_float: yes
+    theme: paper
+    number_sections: true
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, out.width = "90%", message = FALSE, warning = FALSE)
+```
+
+```{=html}
+<style type ="text/css">body .main-container {    max-width: 1500px;    margin-left: 100px;    margin-right: 100px;} td { font-size: 15px; text-align: center; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} th { font-size: 15px; text-align: center; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif"; font-weight: 600;} h1 { font-size: 25px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h2 { font-size: 22px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h3 { font-size: 20px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h4 { font-size: 18px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h5 {  line-height: 200%;  text-align: center;  font-weight: 600;  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} img {    margin-left: auto;    margin-right:auto;    display:block;}p {    line-height: 180%;    font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";    text-align: justify;    font-size: 15px;}
+</style>
+```
+
+# 基因集打分
+
+## 目的
+
+  在单细胞RNA测序（scRNA-seq）分析中，基因集打分（Gene Set Scoring）是一种常用的技术，旨在通过评估特定基因集在每个细胞中的活跃程度，进而分析细胞的生物学功能、状态或通路的表达情况。
+
+## 不同分组间比较{.tabset .tabset-fade .tabset-pills}
+
+  首先，从不同分组基因集打分的UMAP图中可以看到不同分组中该基因集表达的大体差异。
+
+### Cytokine基因集UMAP结果 {.tabset .tabset-fade .tabset-pills}
+
+```{r out.width="70%"}
+knitr::include_graphics('umap/umap_Cytokine_split_groups.png')
+```
+
+### Inflammatory基因集UMAP结果 {.tabset .tabset-fade .tabset-pills}
+
+```{r out.width="70%"}
+knitr::include_graphics('umap/umap_Inflammatory_split_groups.png')
+```
+
+## 全部细胞中基因集打分组间比较统计检验 {.tabset .tabset-fade .tabset-pills}
+
+### Cytokine基因集全部细胞中组间比较箱型图 {.tabset .tabset-fade .tabset-pills}
+
+  Cytokine基因集全部细胞中不同分组（group）箱型图，使用wilcox检验组间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('boxplot/Cytokine_Group_Comparison_Boxplot.png')
+```
+
+~注 **横轴:** 不同分组；**纵轴:** 基因集分值；**填充颜色:** 组别；~
+
+### Inflammatory基因集全部细胞中组间比较箱型图 {.tabset .tabset-fade .tabset-pills}
+
+  Inflammatory基因集全部细胞中不同分组（group）箱型图，使用wilcox检验组间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('boxplot/Inflammatory_Group_Comparison_Boxplot.png')
+```
+
+~注 **横轴:** 不同分组；**纵轴:** 基因集分值；**填充颜色:** 组别；~
+
+### Cytokine基因集全部细胞中组间比较小提琴图 {.tabset .tabset-fade .tabset-pills}
+
+  Cytokine基因集全部细胞中不同分组（group）小提琴图，使用wilcox检验组间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('violin/Cytokine_Group_Comparison_ViolinPlot.png')
+```
+
+~注 **横轴:** 不同分组；**纵轴:** 基因集分值；**填充颜色:** 组别；~
+
+### Inflammatory基因集全部细胞中组间比较箱型图 {.tabset .tabset-fade .tabset-pills}
+
+  Inflammatory基因集全部细胞中不同分组（group）箱型图，使用wilcox检验组间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('violin/Inflammatory_Group_Comparison_ViolinPlot.png')
+```
+
+~注 **横轴:** 不同分组；**纵轴:** 基因集分值；**填充颜色:** 组别；~
+
+## 不同细胞类型中基因集打分组间比较统计检验 {.tabset .tabset-fade .tabset-pills}
+
+### Cytokine基因集不同细胞类型中组间比较箱型图 {.tabset .tabset-fade .tabset-pills}
+
+  Cytokine基因集不同细胞类型中不同分组（group）箱型图，使用wilcox检验组间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('boxplot/Cytokine_Scores_Boxplot.png')
+```
+
+~注 **横轴:** 不同分组；**纵轴:** 基因集分值；**填充颜色:** 组别；**分面:** 不同细胞类型；~
+
+### Inflammatory基因集不同细胞类型中组间比较箱型图 {.tabset .tabset-fade .tabset-pills}
+
+  Inflammatory基因集不同细胞类型中不同分组（group）箱型图，使用wilcox检验组间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('boxplot/Inflammatory_Scores_Boxplot.png')
+```
+
+~注 **横轴:** 不同分组；**纵轴:** 基因集分值；**填充颜色:** 组别；**分面:** 不同细胞类型；~
+
+### Cytokine基因集不同细胞类型中组间比较小提琴图 {.tabset .tabset-fade .tabset-pills}
+
+  Cytokine基因集不同细胞类型中不同分组（group）小提琴图，使用wilcox检验组间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('violin/Cytokine_Scores_ViolinPlot.png')
+```
+
+~注 **横轴:** 不同分组；**纵轴:** 基因集分值；**填充颜色:** 组别；**分面:** 不同细胞类型；~
+
+### Inflammatory基因集不同细胞类型中组间比较箱型图 {.tabset .tabset-fade .tabset-pills}
+
+  Inflammatory基因集不同细胞类型中不同分组（group）小提琴图，使用wilcox检验组间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('violin/Inflammatory_Scores_ViolinPlot.png')
+```
+
+~注 **横轴:** 不同分组；**纵轴:** 基因集分值；**填充颜色:** 组别；**分面:** 不同细胞类型；~
+
+## 全部细胞中基因集打分细胞类型间比较统计检验 {.tabset .tabset-fade .tabset-pills}
+
+### Cytokine基因集细胞类型间比较箱型图 {.tabset .tabset-fade .tabset-pills}
+
+  Cytokine基因集全部细胞中不同细胞类型（cell_type）箱型图，使用wilcox检验细胞类型间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('boxplot/Cytokine_CellType_Comparison_Boxplot.png')
+```
+
+~注 **横轴:** 不同分组；**纵轴:** 基因集分值；**填充颜色:** 组别；~
+
+### Inflammatory基因集全部细胞中细胞类型间比较箱型图 {.tabset .tabset-fade .tabset-pills}
+
+  Inflammatory基因集全部细胞中不同细胞类型（cell_type）箱型图，使用wilcox检验细胞类型间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('boxplot/Inflammatory_CellType_Comparison_Boxplot.png')
+```
+
+~注 **横轴:** 不同分组；**纵轴:** 基因集分值；**填充颜色:** 组别；~
+
+### Cytokine基因集全部细胞中细胞类型间比较小提琴图 {.tabset .tabset-fade .tabset-pills}
+
+  Cytokine基因集全部细胞中不同细胞类型（cell_type）小提琴图，使用wilcox检验细胞类型间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('violin/Cytokine_CellType_Comparison_ViolinPlot.png')
+```
+
+~注 **横轴:** 不同细胞类型；**纵轴:** 基因集分值；**填充颜色:** 细胞类型；~
+
+### Inflammatory基因集全部细胞中细胞类型间比较箱型图 {.tabset .tabset-fade .tabset-pills}
+
+  Inflammatory基因集全部细胞中不同细胞类型（cell_type）小提琴图，使用wilcox检验细胞类型间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('violin/Inflammatory_CellType_Comparison_ViolinPlot.png')
+```
+
+~注 **横轴:** 不同细胞类型；**纵轴:** 基因集分值；**填充颜色:** 细胞类型；~
+
+## 各组内基因集打分细胞类型间比较统计检验 {.tabset .tabset-fade .tabset-pills}
+
+### Cytokine基因集Normal组内细胞类型间比较箱型图 {.tabset .tabset-fade .tabset-pills}
+
+  Cytokine基因集Normal组内不同细胞类型（cell_type）箱型图，使用wilcox检验细胞类型间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('boxplot/Cytokine_Normal_CellType_Comparison_Boxplot.png')
+```
+
+~注 **横轴:** 不同细胞类型；**纵轴:** 基因集分值；**填充颜色:** 细胞类型；~
+
+### Inflammatory基因集Normal组内细胞类型间比较箱型图 {.tabset .tabset-fade .tabset-pills}
+
+  Inflammatory基因集Normal组内不同细胞类型（cell_type）箱型图，使用wilcox检验细胞类型间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('boxplot/Inflammatory_Normal_CellType_Comparison_Boxplot.png')
+```
+
+~注 **横轴:** 不同细胞类型；**纵轴:** 基因集分值；**填充颜色:** 细胞类型；~
+
+### Cytokine基因集Normal组内细胞类型间比较小提琴图 {.tabset .tabset-fade .tabset-pills}
+
+  Cytokine基因集Normal组内不同细胞类型（cell_type）小提琴图，使用wilcox检验细胞类型间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('violin/Cytokine_Normal_CellType_Comparison_ViolinPlot.png')
+```
+
+~注 **横轴:** 不同细胞类型；**纵轴:** 基因集分值；**填充颜色:** 细胞类型；~
+
+### Cytokine基因集Tumor组内细胞类型间比较箱型图 {.tabset .tabset-fade .tabset-pills}
+
+  Cytokine基因集Tumor组内不同细胞类型（cell_type）箱型图，使用wilcox检验细胞类型间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('boxplot/Cytokine_Tumor_CellType_Comparison_Boxplot.png')
+```
+
+~注 **横轴:** 不同细胞类型；**纵轴:** 基因集分值；**填充颜色:** 细胞类型；~
+
+### Inflammatory基因集Tumor组内细胞类型间比较箱型图 {.tabset .tabset-fade .tabset-pills}
+
+  Inflammatory基因集Tumor组内不同细胞类型（cell_type）箱型图，使用wilcox检验细胞类型间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('boxplot/Inflammatory_Tumor_CellType_Comparison_Boxplot.png')
+```
+
+~注 **横轴:** 不同细胞类型；**纵轴:** 基因集分值；**填充颜色:** 细胞类型；~
+
+### Cytokine基因集Tumor组内细胞类型间比较小提琴图 {.tabset .tabset-fade .tabset-pills}
+
+  Cytokine基因集Tumor组内不同细胞类型（cell_type）小提琴图，使用wilcox检验细胞类型间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('violin/Cytokine_Tumor_CellType_Comparison_ViolinPlot.png')
+```
+
+~注 **横轴:** 不同细胞类型；**纵轴:** 基因集分值；**填充颜色:** 细胞类型；~
+
+### Inflammatory基因集Tumor组内细胞类型间比较箱型图 {.tabset .tabset-fade .tabset-pills}
+
+  Inflammatory基因集Tumor组内不同细胞类型（cell_type）小提琴图，使用wilcox检验细胞类型间差异。
+
+```{r out.width="70%"}
+knitr::include_graphics('violin/Inflammatory_Tumor_CellType_Comparison_ViolinPlot.png')
+```
+
+~注 **横轴:** 不同细胞类型；**纵轴:** 基因集分值；**填充颜色:** 细胞类型；~
+
+
+
+

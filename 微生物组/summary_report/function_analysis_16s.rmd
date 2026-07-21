@@ -1,0 +1,127 @@
+### 4.8 功能预测
+
+#### 4.8.1 16S PICRUSt2功能预测
+
+&emsp;&emsp;PICRUSt2（Phylogenetic Investigation of Communities by Reconstruction of Unobserved States）<sup>[23]</sup>是一款基于样本中的标记基因序列丰度来预测样本功能丰度的软件。这里的功能是指基因家族，如KEGG同源基因、EC酶分类号等，其原理如下图所示：
+
+```{r echo=FALSE, out.width="60%", fig.align="center"}
+knitr::include_graphics(params$picrust2_flowchart)
+```
+
+<center>**图4.8.1-1 PICRUSt2原理图**</center>
+
+&nbsp;
+
+&emsp;&emsp;使用PICRUSt2将特征序列（16S rRNA）与微生物基因组数据库（IMG，Integrated Microbial Genomes）<sup>[24]</sup>参考序列比对（align）构建进化树，找到特征序列的“最近物种”，并根据已知物种的基因种类和丰度信息预测未知物种的基因信息，从而结合基因的KEGG通路信息预测整个群落的通路情况。PICRUSt2可以将16S rRNA基因序列在多个功能数据库中进行预测，包括[KEGG](https://www.kegg.jp/)<sup>[25]</sup>、[MetaCyc](https://metacyc.org/)<sup>[26]</sup>等。
+
+&emsp;&emsp;**结果文件：**
+
+- 所有样本的KEGG PATHWAY功能预测丰度统计表：results/08.function_analysis/PICRUSt2/all.KEGG.abundance.xls；
+- 所有样本的KEGG ENZYME功能预测丰度统计表：results/08.function_analysis/PICRUSt2/all.EC.abundance.xls；
+- 所有样本的MetaCyc功能预测丰度统计表：results/08.function_analysis/PICRUSt2/all.MetaCyc.abundance.xls。
+
+&nbsp;
+
+#### 4.8.2 功能差异分析
+
+&emsp;&emsp;（**功能差异分析仅针对两两分组之间的比较组进行**）使用R包ggpicrust2<sup>[27]</sup>对不同样本分组的功能丰度进行两两之间的显著性差异检验，检验结果以表格和柱状图的形式进行展示。
+
+##### KEGG PATHWAY {.tabset .tabset-dropdown}
+
+&emsp;&emsp;KEGG数据库涵盖了基因组、生化、系统功能学研究等庞大的信息，共有16个子数据库，包含不同的类型的信息。KEGG PATHWAY数据库是其中之一，包括了代谢、调控、通路、生化、疾病、药物等相关的分子相互作用和关系网络。通过KEGG代谢途径的组成及差异分析，可以观测不同分组的样品之间微生物群落的功能基因在代谢途径上的差异和变化，是研究群落样本为适应环境变化发生的代谢功能改变的有效手段。不同样本分组KEGG PATHWAY功能丰度两两之间的显著性差异检验如下图所示：
+
+```{r, echo=FALSE, results='asis'}
+
+if (params$func_kegg_dir != "skip") {
+  contrast_list <- list.dirs(params$func_kegg_dir, recursive = FALSE, full.names = FALSE)
+  sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+  for (contrast in sort_contrast_list) {
+    pic <- file.path(params$func_kegg_dir, contrast, glue("{contrast}.KEGG.significant.png"))
+    cat("###### ", contrast, " \n")
+    cat("\n")
+    cat("![](", pic, "){width=100%}", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**图4.8.2-1 KEGG PATHWAY功能丰度显著性差异检验结果柱状图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 柱状图中展示了两两分组之间的功能特征差异（展示检验P值（p_values）前30的功能特征）。左边部分为功能特征的注释信息，中间部分为差异功能特征在两个分组中的丰度信息，右边部分为差异功能特征在两个分组之间的Fold Change值以及检验校正P值（p_adjust）。</center>", "\n")
+    cat("<center>&nbsp;<center>", "\n")
+    cat("\n")
+  }
+}
+
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 不同样本分组KEGG PATHWAY功能丰度两两之间的显著性差异检验结果表格和柱状图：results/08.function_analysis/PICRUSt2/KEGG/\*/\*.\*.KEGG.significant.{pdf,png,xls}。
+
+&nbsp;
+
+##### KEGG ENZYME {.tabset .tabset-dropdown}
+
+&emsp;&emsp;KEGG ENZYME数据库是一种专门用于生物化学和代谢途径研究的数据库，它提供了大量关于酶（Enzyme）的信息。这些信息包括酶的命名、分类、催化反应、参与的代谢途径以及相关文献引用等内容。通过KEGG ENZYME数据库，研究人员可以获取关于酶的多方面信息，有助于深入理解生物化学反应和代谢途径的机制，以及开展相关的生物信息学分析和研究工作。不同样本分组KEGG ENZYME功能丰度两两之间的显著性差异检验如下图所示：
+
+```{r, echo=FALSE, results='asis'}
+
+if (params$func_kegg_dir != "skip") {
+  contrast_list <- list.dirs(params$func_ec_dir, recursive = FALSE, full.names = FALSE)
+  sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+  for (contrast in sort_contrast_list) {
+    pic <- file.path(params$func_ec_dir, contrast, glue("{contrast}.EC.significant.png"))
+    cat("###### ", contrast, " \n")
+    cat("\n")
+    cat("![](", pic, "){width=100%}", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**图4.8.2-2 KEGG ENZYME功能丰度显著性差异检验结果柱状图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 柱状图中展示了两两分组之间的功能特征差异（展示检验P值（p_values）前30的功能特征）。左边部分为功能特征的注释信息，中间部分为差异功能特征在两个分组中的丰度信息，右边部分为差异功能特征在两个分组之间的Fold Change值以及检验校正P值（p_adjust）。</center>", "\n")
+    cat("<center>&nbsp;<center>", "\n")
+    cat("\n")
+  }
+}
+
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 不同样本分组KEGG ENZYME功能丰度两两之间的显著性差异检验结果表格和柱状图：results/08.function_analysis/PICRUSt2/EC/\*/\*.\*.EC.significant.{pdf,png,xls}。
+
+&nbsp;
+
+##### MetaCyc {.tabset .tabset-dropdown}
+
+&emsp;&emsp;MetaCyc数据库是一个专门用于代谢途径和酶的信息的在线数据库，由美国卡内基梅隆大学的SRI国际生物信息研究所开发和维护。该数据库收集了广泛的生物化学反应和代谢途径数据，为研究人员提供了全面的生物化学信息资源。MetaCyc数据库的数据来源广泛，涵盖了多种生物物种和生物体内的不同代谢途径，为生物化学研究和代谢工程等领域的研究提供了重要的信息资源。不同样本分组MetaCyc功能丰度两两之间的显著性差异检验如下图所示：
+
+```{r, echo=FALSE, results='asis'}
+
+if (params$func_kegg_dir != "skip") {
+  contrast_list <- list.dirs(params$func_metacyc_dir, recursive = FALSE, full.names = FALSE)
+  sort_contrast_list <- contrast_list[order(lengths(strsplit(contrast_list, "-vs-")))]
+
+  for (contrast in sort_contrast_list) {
+    pic <- file.path(params$func_metacyc_dir, contrast, glue("{contrast}.MetaCyc.significant.png"))
+    cat("###### ", contrast, " \n")
+    cat("\n")
+    cat("![](", pic, "){width=100%}", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**图4.8.2-3 MetaCyc功能丰度显著性差异检验结果柱状图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 柱状图中展示了两两分组之间的功能特征差异（展示检验P值（p_values）前30的功能特征）。左边部分为功能特征的注释信息，中间部分为差异功能特征在两个分组中的丰度信息，右边部分为差异功能特征在两个分组之间的Fold Change值以及检验校正P值（p_adjust）。</center>", "\n")
+    cat("<center>&nbsp;<center>", "\n")
+    cat("\n")
+  }
+}
+
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- 不同样本分组MetaCyc功能丰度两两之间的显著性差异检验结果表格和柱状图：results/08.function_analysis/PICRUSt2/MetaCyc/\*/\*.\*.MetaCyc.significant.{pdf,png,xls}。

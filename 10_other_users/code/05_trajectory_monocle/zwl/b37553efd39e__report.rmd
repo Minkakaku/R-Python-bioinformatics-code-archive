@@ -1,0 +1,169 @@
+---
+title: "<center>拟时序分析结果报告</center>"
+author:
+  - name: "<center>杭州广科安德生物科技有限公司</center>"
+date:
+  - "<center>`r Sys.Date()`</center>"
+runtime: static
+output:
+  html_document:
+    keep_md: false
+    toc: yes
+    toc_float: yes
+    theme: paper
+    number_sections: true
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, out.width = "90%", message = FALSE, warning = FALSE)
+```
+
+<style type ="text/css">body .main-container {    max-width: 1500px;    margin-left: 100px;    margin-right: 100px;} td { font-size: 15px; text-align: center; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} th { font-size: 15px; text-align: center; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif"; font-weight: 600;} h1 { font-size: 25px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h2 { font-size: 22px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h3 { font-size: 20px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h4 { font-size: 18px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h5 {  line-height: 200%;  text-align: center;  font-weight: 600;  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} img {    margin-left: auto;    margin-right:auto;    display:block;}p {    line-height: 180%;    font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";    text-align: justify;    font-size: 15px;}
+</style>
+
+
+# 基础介绍
+
+&emsp;&emsp;拟时序分析通过构建细胞发育轨迹来推断细胞随时间变化的过程，揭示细胞间潜在的演化关系。
+
+&emsp;&emsp;Monocle2的主要步骤包含降维和特征选择，轨迹构建，拟时间排序，差异基因分析。其中DDRTree是Monocle2的核心算法，它通过非线性降维捕捉细胞发育分化过程中的特征，自动识别分支节点，构建树状结构。
+
+&emsp;&emsp;在单细胞数据的分析研究中，该分析对理解细胞命运、发育过程及细胞异质性具有重要作用。
+
+# 拟时序分析主要结果
+
+## 特征基因筛选
+&emsp;&emsp;在单细胞轨迹推断中，如何自动选择与细胞状态转变密切相关的基因（ordering genes）非常关键。传统方法往往依赖于预先定义的细胞类别或者简单的方差筛选，但这些方法可能无法捕获隐含的、非线性的细胞发育变化。Monocle2 提出了一个利用数据本身结构信息进行无监督基因筛选的方法——dpFeature。这一方法不依赖预先定义的细胞类型标签，能够更客观地捕获细胞状态和发育轨迹中的关键转变点，从而提高轨迹推断的准确性。
+
+```{r, layout="l-body-outset"}
+library(kableExtra)
+data <- read.table('monocle.DEG.xls', sep = '\t', header = TRUE, check.names = FALSE)
+data <- data[1:min(nrow(data),10),]
+
+data %>%
+  kbl(align = "c", booktabs = TRUE) %>% row_spec(0, bold = TRUE, font_size=12, background = '#14B8E5', align = "c") %>%
+kableExtra::kable_styling(position = "left", latex_options = c("striped", "hold_position"), stripe_color = "gray!6") %>% kable_classic(full_width = T, html_font = "Cambria")
+```
+
+注:
+**Genes:** 基因symbol名；
+**pval:** 特征基因在细胞群之间差异表达的显著性；
+**qval:** 多重检验校正后的pval，筛选了qval<0.01的结果；
+**num_cells_expressed:** 表达该基因的细胞数量。
+
+## 细胞特征信息
+&emsp;&emsp;记录了拟时序分析中所有细胞的关键信息。
+```{r, layout="l-body-outset"}
+library(kableExtra)
+data <- read.table('monocle.metadata.xls', sep = '\t', header = TRUE, check.names = FALSE)
+data <- data[1:min(nrow(data),10),]
+
+data %>%
+  kbl(align = "c", booktabs = TRUE) %>% row_spec(0, bold = TRUE, font_size=12, background = '#14B8E5', align = "c") %>%
+kableExtra::kable_styling(position = "left", latex_options = c("striped", "hold_position"), stripe_color = "gray!6") %>% kable_classic(full_width = T, html_font = "Cambria")
+```
+
+注:
+**Cells:** 细胞的Barcode名称；
+**sample:** 细胞对应的样本；
+**leiden:** 聚类结果，每个细胞对应的簇；
+**Size_Factore:** 基因表达量标准化的因子，反应每个细胞测序深度的差异；
+**num_genes_expressed:** 每个细胞中检测到的表达的基因数量；
+**Pseudotime:** 细胞在时间轴上的排序；
+**State:** 细胞在发育轨迹上根据节点分割的不同状态或分支。
+
+## 特征基因筛选散点图
+
+```{r echo=FALSE, fig.align='center'}
+knitr::include_graphics('monocle.ordergenes.png')
+```
+
+注:横轴代表基因的平均表达量，纵轴为基因的离散度，体现基因表达量在不同细胞间的差异性。图中的散点代表基因，黑色的点为选中的基因，将用于后续的分析。
+
+## 拟时间序列轨迹图
+
+```{r echo=FALSE, fig.align='center'}
+knitr::include_graphics('monocle.trajectory.pseudotime.png')
+```
+
+注:颜色的深浅代表细胞拟时间值的大小，显示其在时间轴上的先后顺序，深色代表发育前期的细胞，浅色代表发育后期的细胞。
+
+## 细胞状态轨迹图
+```{r echo=FALSE, fig.align='center'}
+knitr::include_graphics('monocle.trajectory.State.png')
+knitr::include_graphics('monocle.trajectory.State.faceted.png')
+```
+
+注:根据节点将细胞分为多个分支，不同的颜色代表不同的分支状态。
+
+## 细胞簇分布轨迹图
+```{r echo=FALSE, fig.align='center'}
+knitr::include_graphics('monocle.trajectory.leiden.png')
+knitr::include_graphics('monocle.trajectory.leiden.faceted.png')
+```
+
+注:展示不同cluster的细胞在轨迹图上的分布情况。
+
+
+## 样本分布轨迹图
+```{r echo=FALSE, fig.align='center'}
+knitr::include_graphics('monocle.trajectory.sample.png')
+knitr::include_graphics('monocle.trajectory.sample.faceted.png')
+```
+
+注:不同样本的细胞在轨迹图上的分布情况。
+
+## 细胞簇分布树状图
+```{r echo=FALSE, fig.align='center'}
+knitr::include_graphics('monocle.trajectory.tree.png')
+knitr::include_graphics('monocle.trajectory.tree.faceted.png')
+```
+
+注:不同cluster的细胞在树状图上的分布情况。最高点为树状图的根节点，向下的分支为树状图的子节点。
+
+# BEAM分析主要结果
+&emsp;&emsp;单细胞拟时间分析结果中，存在数个分支点，这些分支节点的发生代表着细胞产生了程序性的变化，如细胞命运分化。因此对分支事件分析有着重要意义。BEAM(Branched Expression Analysis Modeling)方法可以对拟时间排序后的细胞数据以及指定的节点进行分析，进而发现与分支相关的差异基因。
+
+## Beam节点显著差异基因表
+&emsp;&emsp;对于选择的节点进行两种不同细胞命运间的差异比较，得到在该节点前后发生显著变化的所有基因。
+```{r, layout="l-body-outset"}
+library(kableExtra)
+data <- read.csv('BEAM_analysis.Node1/BEAM_res.csv', sep = ',', header = TRUE, check.names = FALSE)
+data <- data[1:min(nrow(data),10),]
+
+data %>%
+  kbl(align = "c", booktabs = TRUE) %>% row_spec(0, bold = TRUE, font_size=12, background = '#14B8E5', align = "c") %>%
+kableExtra::kable_styling(position = "left", latex_options = c("striped", "hold_position"), stripe_color = "gray!6") %>% kable_classic(full_width = T, html_font = "Cambria")
+```
+
+注:
+**gene_short_name:** 基因symbol名；
+**pval:** 基因的显著性p值；
+**qval:** 多重检验校正后的p值。
+
+## 显著差异基因的表达量变化热图
+
+```{r echo=FALSE, fig.align='center'}
+knitr::include_graphics('BEAM_analysis.Node1/BEAM_heatmap.png')
+```
+
+注:图中横坐标为所有细胞的拟时间值从小到大分成100个bin，用bin的形式代表拟时间值的变化。从中心点开始，左右两边分别为经过节点的两条线路，灰色为节点前的细胞(Pre branch)，红色和蓝色分别为节点后两条分支的细胞。纵轴为筛选出的显著差异的基因，并根据基因的状态改变情况对其进行聚类(默认分为四类)。图中的颜色为基因的表达量。
+
+## TOP20显著差异基因的表达量变化散点图
+
+```{r echo=FALSE, fig.align='center'}
+knitr::include_graphics('BEAM_analysis.Node1/BEAM_pseudotime_top20.png')
+```
+
+注:图中为top20的差异基因表达变化散点图，横轴为拟时间值的大小，纵轴为对应基因的表达量。图中的点为不同的细胞，使用颜色区分不同的state。实线和虚线分别代表经过节点的两条路径的细胞表达量在散点图中的拟合。
+
+# 参考文献
+
+[1] Cole Trapnell and Davide Cacchiarelli et al (2014): The dynamics and regulators of cell fate decisions are revealed by pseudo-temporal ordering of single cells. Nature Biotechnology
+
+[2] Xiaojie Qiu, Andrew Hill, Cole Trapnell et al (2017): Single-cell mRNA quantification and differential analysis with Census. Nature Methods
+
+[3] Xiaojie Qiu, Cole Trapnell et al (2017): Reverse graph embedding resolves complex single-cell developmental trajectories. BioRxiv
+
+
+

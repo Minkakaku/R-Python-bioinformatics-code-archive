@@ -1,0 +1,14 @@
+mv D22-16578-1.csv Her2_024.csv
+mv D22-19961-9-1.csv Her2_025_1.csv
+mv D22-19961-9-2.csv Her2_025_2.csv
+mv D23-10593-1.csv low_15_1.csv
+mv D23-10593-3.csv low_15_3.csv
+mv D23-48937-4.csv low_19.csv
+mv D24-04560-1-2.csv low_18_2.csv
+mv D25-00003-7-1.csv Her2_026_1.csv
+mv D25-05658-1.csv low_24.csv
+mv D25-09086-1.csv Her2_018.csv
+mv D25-12733-1-2.csv Her2_027_2.csv
+mv D25-13349-3-1.csv low_25_1.csv
+mv D25-13349-3-2.csv low_25_2.csv
+mv D25-21921-2.csv Her2_031.csv

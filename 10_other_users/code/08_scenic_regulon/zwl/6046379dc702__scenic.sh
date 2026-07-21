@@ -1,0 +1,2 @@
+python /mnt/NexData_file/home/zwl/Project/personal/demo/SCENIC/new_code/scenic.py   --adata_path /mnt/NexData_file/home/zwl/Project/SC2507233885/require6/L2-3IT-MT/anno.h5ad   --output_dir /mnt/NexData_file/home/zwl/Project/SC2507233885/require6/L2-3IT-MT/   --species mouse
+python /mnt/NexData_file/home/zwl/Project/personal/demo/SCENIC/new_code/scenic.py   --adata_path /mnt/NexData_file/home/zwl/Project/SC2507233885/require6/L5-6\ NP2/anno.h5ad   --output_dir /mnt/NexData_file/home/zwl/Project/SC2507233885/require6/L5-6\ NP2   --species mouse

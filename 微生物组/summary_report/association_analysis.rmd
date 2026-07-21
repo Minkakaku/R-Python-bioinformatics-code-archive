@@ -1,0 +1,37 @@
+### 4.7 相关性与关联分析
+
+#### 4.7.1 相关性网络分析
+
+&emsp;&emsp;基于物种样本间的相对丰度计算Spearman秩相关系数获得所有样本内物种之间的相互关系<sup>[21]</sup>。该分析可以寻找相互拮抗或协同的物种，从而寻找环境样本中的微生物群体协同或相互抑制信息，进一步解释样本间表型差异的形成机制。
+
+&emsp;&emsp;筛选平均相对丰度最高的50个属水平物种，运用R语言igraph<sup>[22]</sup>包绘制相关性网络图，筛选相关系数大于`r params$spearman_r_cutoff`且p值小于`r params$spearman_p_cutoff`的结果，根据所有样本和各个样本分组内样本绘制的物种相关性网络图如下所示：
+
+##### {- .toc-ignore .tabset .tabset-dropdown}
+
+```{r, echo=FALSE, results='asis'}
+
+group_list <- list.files(params$network_dir)
+group_list <- c("all", sort(group_list[! group_list %in% c("all")]))
+
+for (group in group_list) {
+    pic <- file.path(params$network_dir, group, glue("{group}.Genus.spearman.network.png"))
+    cat("###### ", group, " \n")
+    cat("\n")
+    cat("![](", pic, "){width=100%}", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**图4.7.1-1 属分类水平物种相关性网络图**</center>", "\n")
+    cat("<center>&nbsp;</center>", "\n")
+    cat("<center>**说明** 圆圈代表一个物种，大小代表其相对丰度，不同的颜色代表不同的物种门分类，圆圈之间的线条代表这两个物种间的相关性显著，线条颜色红色代表正相关，蓝色代表负相关，线条越粗，相关系数绝对值越大。</center>", "\n")
+    cat("<center>&nbsp;<center>", "\n")
+    cat("\n")
+}
+
+```
+
+##### {- .toc-ignore}
+
+&emsp;&emsp;**结果文件：**
+
+- Spearman相关系数矩阵：results/07.association_analysis/network/\*/\*.Genus.spearman.coefficient.xls；
+- Spearman相关系数p值矩阵：results/07.association_analysis/network/\*/\*.Genus.spearman.p.xls；
+- Spearman相关性网络图：results/07.association_analysis/network/\*/\*.Genus.spearman.network.{pdf,png}。

@@ -1,0 +1,245 @@
+---
+title: "<center>转录因子分析报告</center>"
+author:
+  - name: "<center>杭州广科安德生物科技有限公司</center>"
+date:
+  - "<center>`r Sys.Date()`</center>"
+runtime: static
+output:
+  html_document: 
+    toc: true
+    toc_float: true
+    theme: united
+    number_sections: true
+  html_notebook: 
+    toc: true
+    toc_float: true
+    theme: cerulean
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, out.width = "90%", message = FALSE, warning = FALSE)
+```
+
+<style type ="text/css">body .main-container {    max-width: 1500px;    margin-left: 100px;    margin-right: 100px;} td { font-size: 15px; text-align: center; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} th { font-size: 15px; text-align: center; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif"; font-weight: 600;} h1 { font-size: 25px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h2 { font-size: 22px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h3 { font-size: 20px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h4 { font-size: 18px; font-weight: 600; color: #377EB8; font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} h5 {  line-height: 200%;  text-align: center;  font-weight: 600;  font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";} img {    margin-left: auto;    margin-right:auto;    display:block;}p {    line-height: 180%;    font-family: "Times","Microsoft YaHei","黑体","SimHei","宋体","SimSun","sans-serif";    text-align: justify;    font-size: 15px;}
+</style>
+
+# SCENIC转录因子分析
+
+  SCENIC(Single-Cell rEgulatory Network Inference and
+Clustering)是一种用于从单细胞RNA测序数据中推断基因调控网络和鉴定细胞状态的计算方法。它结合了共表达分析和DNA基序分析，可以识别驱动细胞类型和细胞状态的特异性转录因子调控网络。SCENIC分析通过解析单细胞水平的基因调控网络，能够有效识别驱动细胞分化和疾病发生的关键转录因子，揭示细胞异质性的调控基础。该方法在鉴定细胞亚群特异性调控程序、发现疾病相关生物标志物以及预测药物作用靶点等方面具有重要应用价值，为理解细胞命运决定和疾病机制提供了新的研究视角。
+
+```{r echo=FALSE, out.width="70%"}
+knitr::include_graphics("/mnt/NexData_file/home/zwl/Project/personal/demo/SCENIC/Scenic_workflow.jpg")
+```
+
+# 调控网络分析结果
+
+  根据基因表达矩阵使用GENIE3/GRN方法构建共表达基因调控网络。GENIE3/GRN以单细胞基因表达量矩阵和转录因子
+(TF)
+为输入，构建P个随机森林树（P=矩阵中基因数量），并计算每个TF与gene之间的重要性评分
+(IM)，最终可以获得TF-genes共表达模块。最后删除IM低于阈值的基因关系，过滤基因数低于50的模块。
+
+## 共表达网络 {.tabset .tabset-fade .tabset-pills}
+
+  共表达表格包含TFs的相关基因及其调控强度：
+
+-   TF：转录因子
+-   target：被转录因子调控表达的基因
+-   Importance：转录因子和靶基因之间的调控关系的重要程度
+
+  结果如下表所示：
+
+```{r echo=FALSE, warning=FALSE}
+args <- commandArgs(trailingOnly = TRUE)
+setwd(args[1])  # 设置工作目录
+library(DT)
+library(dplyr)
+# 读取GRN结果
+grn_data <- read.csv("./grn_result.csv", nrows = 1000)
+top_grn <- grn_data[order(-grn_data$importance), ][1:50, ]
+
+DT::datatable(
+  top_grn,
+  extensions = 'Buttons',
+  options = list(
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv', 'excel'),
+    pageLength = 10,
+    scrollX = TRUE
+  ),
+  colnames = c('TF' = 'TF', 
+               'target' = 'target', 
+               'importance' = 'importance'),
+  caption = 'Top 50高置信度TF-靶基因调控关系'
+) %>% formatRound('importance', 3)#保留3位小数处理
+```
+表格对应源文件 : grn_result.csv
+
+
+# RcisTarget分析结果
+
+  RcisTarget通过整合ENCODE
+motif数据库的顺式调控元件信息，对GENIE3预测的初始调控网络进行严格筛选。该方法基于转录因子结合motif的富集分析，有效识别具有直接调控证据的TF-靶基因互作，剔除缺乏motif支持的假阳性关联，最终构建高可信度的转录调控模块（Regulon）。这一流程显著提升了单细胞调控网络推断的生物学可靠性，为后续分析提供了更准确的调控关系预测。
+
+## 调控子中的转录调控关系 {.tabset .tabset-fade .tabset-pills}
+
+  调控子：
+
+-   Motif ID：转录因子结合的基序标识
+-   AUC：调控子活性得分
+-   NES：调控子富集程度
+-   MotifSimilarityQvalue：基序相似性校正后p值
+-   OrthologousIdentity：转录因子 - 靶基因调控关系在不同物种间的保守性
+-   Annotation：注释信息
+-   Context：分析信息
+-   TargetGenes：转录因子调控的靶基因列表
+-   RankAtMax：基因在调控的所有基因排序中的位置
+
+  结果如下表所示：
+
+```{r echo=FALSE, warning=FALSE}
+library(DT)
+library(dplyr)
+# 读取ctx结果,并处理格式
+ctx_data <- read.csv("/mnt/NexData_file/home/zwl/Project/personal/demo/SCENIC/output/ctx_result.csv")
+cleaned_df <- as.data.frame(lapply(ctx_data, function(column) {
+  non_na_values <- column[!(column == "")]
+}))
+colnames(cleaned_df) = cleaned_df[1,]
+cleaned_df = cleaned_df[-1,]
+#筛选
+sig_ctx <- cleaned_df[cleaned_df$NES > 3 & cleaned_df$OrthologousIdentity > 0.7, ] %>%
+  arrange(desc(NES))%>% head(50)
+
+DT::datatable(
+  sig_ctx[,c("TF","MotifID","AUC","NES","MotifSimilarityQvalue",
+             "OrthologousIdentity","Annotation","RankAtMax")],
+  options = list(
+    pageLength = 5,
+    scrollX = TRUE
+  )
+) %>% formatRound(c('NES','AUC','OrthologousIdentity'), 3)#保留3位小数处理
+```
+
+表格对应源文件 : ctx_result.csv
+
+# AUCell活性分析
+
+  AUCell通过系统化的计算方法量化细胞中调控子的活性水平：首先对每个细胞内所有基因按其表达量进行排序，建立基因表达等级；随后针对每个调控子的靶基因集合，计算其在细胞基因表达排序中的富集程度，得到表征调控活性的AUC值（Area
+Under the
+Curve）；最终通过设定活性阈值，鉴定出调控子在特定细胞群体中的显著激活状态。这种基于排序和富集分析的方法能够准确捕捉细胞群体中调控子的活性特征，为解析细胞异质性和状态转换提供了可靠的量化指标。
+
+  结果如下表所示：
+
+```{r echo=FALSE, warning=FALSE}
+library(SCopeLoomR)
+library(AUCell)
+loom  <- open_loom("/mnt/NexData_file/home/zwl/Project/personal/demo/SCENIC/output/aue_result.loom", mode = "r")
+auc_matrix <- get_dgem(loom)[1:10, 1:5]
+close_loom(loom)
+
+DT::datatable(
+  auc_matrix,
+  caption = 'AUCell活性矩阵示例(前10个TF在前5个细胞中的活性)',
+  options = list(dom = 't')
+) %>% formatRound(columns = 1:5, digits = 2)
+```
+
+表格对应源文件 : aue_result.loom
+
+# 调控子Regulon可视化
+
+  本部分展示可视化结果均基于单细胞水平的调控子活性计算数据，反映了不同细胞群体中调控子的特异性激活模式。
+
+## Regulon活性热图
+
+-   热图颜色深浅代表转录因子在对应细胞上的活性(AUC)，横坐标代表细胞，纵坐标是Regulon。
+
+```{r echo=FALSE, out.width="100%"}
+knitr::include_graphics("/mnt/NexData_file/home/zwl/Project/personal/demo/SCENIC/output/Binarizedheatmap.jpg")
+```
+
+图片对应源文件 : group_Number_netVisual_heatmap
+
+
+## Regulon活性umap图
+
+-   Umap图颜色深浅代表转录因子在对应细胞上的活性(AUC)，每一个点是一个细胞。更多转录因子umap分布图详见附件。
+
+```{r echo=FALSE, out.width="100%"}
+knitr::include_graphics("/mnt/NexData_file/home/zwl/Project/personal/demo/SCENIC/output/AUCplot/AHR(+)_AUC.png")
+```
+
+图片对应源文件 : *(+)_AUC
+
+## 细胞高特异性Regulon
+
+-   该图代表不同细胞类型中Regulon的特异性分数情况，图中按照TF的特异性评分(rss)排序，top5的Regulon会标注名称。更多细胞类型的rss评分图片详见附件。
+
+```{r echo=FALSE, out.width="100%"}
+knitr::include_graphics("/mnt/NexData_file/home/zwl/Project/personal/demo/SCENIC/output/scatterplot/B.Scatterplot.jpg")
+```
+
+图片对应源文件 : *.Scatterplot
+<font size="5">[pdf](./*.Scatterplot.pdf) /
+[png](./*.Scatterplot.png)</font>
+
+## Regulon细胞类型特异性气泡图
+
+-   该图片是将所有细胞类型的top10高特异的Regulon一起绘制了气泡图。图中横坐标是细胞类型，纵坐标是top10的Regulon，气泡的大小是特异性评分RSS，气泡的颜色Z-score越高就说明该regulon与某一群细胞的关系最显著。
+
+```{r echo=FALSE, out.width="100%"}
+knitr::include_graphics("/mnt/NexData_file/home/zwl/Project/personal/demo/SCENIC/output/scatterplot/RSS.bubble.png")
+```
+
+图片对应源文件 : RSS.bubble
+<!-- <font size="5">[pdf](./RSS.bubble.pdf) / -->
+<!-- [png](./RSS.bubble.png)</font> -->
+
+------------------------------------------------------------------------
+
+<!-- -   信号通路组间信息流柱状图 -->
+
+<!-- ```{=html} -->
+
+<!-- <style> -->
+
+<!-- .container { -->
+
+<!--   overflow-y: scroll !important; /* 添加 Y 轴滚动条 */ -->
+
+<!--   max-height: 600px; /* 设置最大高度 */ -->
+
+<!--   width: 100%; /* 设置宽度 */ -->
+
+<!-- } -->
+
+<!-- </style> -->
+
+<!-- ``` -->
+
+<!-- ::: container -->
+
+<!-- <img src="./Number_Information_flow.png" style="width: 80%; height: auto;"/> -->
+
+<!-- ::: -->
+
+<!-- 图片对应源文件 : Number_Information_flow -->
+
+<!-- <font size="5">[pdf](./Number_Information_flow.weight.pdf) / -->
+
+<!-- [png](./Number_Information_flow.png)</font> -->
+
+# 参考文献
+
+[1] Aibar S, et al. SCENIC: single-cell regulatory network inference and
+clustering. Nat Methods. 2017;14(11):1083-1086.
+
+[2] Van de Sande B, et al. A scalable SCENIC workflow for single-cell
+gene regulatory network analysis. Nat Protoc. 2020;15(7):2247-2276.
+
+[3] [pySCENIC]：<https://pyscenic.readthedocs.io>
