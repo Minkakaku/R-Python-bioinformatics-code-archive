@@ -27,8 +27,8 @@ def make_report_dir(out_dir):
     return _cpu_func("make_report_dir")(out_dir)
 
 
-def get_10x_mtx(data_path, sample_dict, out_dir):
-    return _cpu_func("get_10x_mtx")(data_path, sample_dict, out_dir)
+def get_10x_mtx(sample_sheet, out_dir):
+    return _cpu_func("get_10x_mtx")(sample_sheet=sample_sheet, out_dir=out_dir)
 
 
 def data_qc(_adata, out_dir):
