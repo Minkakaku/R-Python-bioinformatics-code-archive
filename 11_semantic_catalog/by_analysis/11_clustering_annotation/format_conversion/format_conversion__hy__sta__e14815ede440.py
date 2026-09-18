@@ -1,0 +1,486 @@
+import scanpy as sc
+import pandas as pd
+import numpy as np
+import os
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy import stats
+import warnings
+warnings.filterwarnings('ignore')
+
+# 设置字体（使用英文字体，避免中文显示问题）
+plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans']
+plt.rcParams['axes.unicode_minus'] = False
+
+# 创建输出目录
+output_dir = "sample_com_state_new"
+os.makedirs(output_dir, exist_ok=True)
+
+# 1. 读取h5ad文件
+print("读取h5ad文件...")
+adata = sc.read_h5ad("All_filter_state_new_samp_new.h5ad")
+print(f"数据形状: {adata.shape}")
+print(f"obs列: {adata.obs.columns.tolist()}")
+
+# 检查必需列
+required_cols = ['sample_new', 'state_new', 'celltype']
+for col in required_cols:
+    if col not in adata.obs.columns:
+        print(f"错误: 缺少必需列 '{col}'")
+        print(f"可用列: {adata.obs.columns.tolist()}")
+        exit(1)
+
+# 创建数据副本
+df = adata.obs[required_cols].copy()
+
+# 检查数据
+print(f"\n数据基本信息:")
+print(f"总细胞数: {len(df)}")
+print(f"sample_new 唯一值: {df['sample_new'].nunique()}")
+print(f"state_new 唯一值: {df['state_new'].nunique()}")
+print(f"celltype 唯一值: {df['celltype'].nunique()}")
+
+# 检查state_new的取值
+state_new_values = sorted(df['state_new'].dropna().unique().tolist())
+print(f"state_new分组: {state_new_values}")
+
+# 2. 统计所有细胞类型的数量和占比
+print("\n" + "="*50)
+print("细胞类型总体统计")
+print("="*50)
+
+total_cells = len(df)
+celltype_stats = df['celltype'].value_counts().reset_index()
+celltype_stats.columns = ['celltype', 'count']
+celltype_stats['percentage'] = (celltype_stats['count'] / total_cells * 100).round(2)
+
+print(f"总细胞数: {total_cells}")
+print(f"细胞类型数: {len(celltype_stats)}")
+print(f"样本数量: {len(df['sample_new'].unique())}")
+print("\n各细胞类型统计:")
+for i, row in celltype_stats.iterrows():
+    print(f"  {i+1:2d}. {row['celltype']:20s}: {row['count']:6d} 个细胞 ({row['percentage']:6.2f}%)")
+
+# 保存总体统计
+celltype_stats.to_csv(os.path.join(output_dir, "celltype_overall_statistics.csv"), index=False, encoding='utf-8-sig')
+print(f"\n总体统计已保存到: {output_dir}/celltype_overall_statistics.csv")
+
+# 3. 以样本为维度的分析（使用sample_new和state_new）
+print("\n" + "="*50)
+print("以样本为维度的分析 (使用sample_new和state_new)")
+print("="*50)
+
+# 3.1 获取sample_new到state_new的映射
+sample_state_mapping = df.drop_duplicates(['sample_new', 'state_new'])[['sample_new', 'state_new']]
+
+# 3.2 计算每个样本中每个细胞类型的比例
+sample_cell_counts = df.groupby(['sample_new', 'celltype']).size().unstack(fill_value=0)
+sample_totals = sample_cell_counts.sum(axis=1)
+sample_proportions = sample_cell_counts.div(sample_totals, axis=0) * 100  # 转换为百分比
+
+# 3.3 将state_new信息添加到sample_proportions
+sample_proportions = sample_proportions.reset_index()
+# 合并state_new信息
+sample_proportions = sample_proportions.merge(sample_state_mapping, on='sample_new', how='left')
+
+# 3.4 重新组织数据用于绘图
+# 获取细胞类型列
+celltype_cols = [col for col in sample_proportions.columns if col not in ['sample_new', 'state_new']]
+
+sample_long = sample_proportions.melt(
+    id_vars=['sample_new', 'state_new'], 
+    value_vars=celltype_cols,
+    var_name='celltype', 
+    value_name='proportion'
+).dropna(subset=['state_new', 'proportion'])  # 移除state_new或proportion为NaN的行
+
+# 移除比例为0的行
+sample_long = sample_long[sample_long['proportion'] > 0]
+
+# 3.5 保存样本维度的数据
+sample_summary = sample_proportions.copy()
+sample_summary['total_cells'] = sample_summary[celltype_cols].sum(axis=1)
+sample_summary.to_csv(os.path.join(output_dir, "sample_celltype_proportions.csv"), 
+                     index=False, encoding='utf-8-sig')
+print(f"样本维度数据已保存到: {output_dir}/sample_celltype_proportions.csv")
+
+# 4. 统计检验函数
+def perform_statistical_tests(data_long, celltype, group_col='state_new', value_col='proportion'):
+    """
+    执行统计检验
+    返回: 检验方法, p值, 是否显著, 两两比较结果
+    """
+    # 按组提取数据
+    groups = data_long[group_col].unique()
+    group_data = {}
+    
+    for group in groups:
+        subset = data_long[(data_long[group_col] == group) & (data_long['celltype'] == celltype)]
+        group_data[group] = subset[value_col].values
+    
+    # 检查是否有足够的数据
+    valid_groups = {g: d for g, d in group_data.items() if len(d) >= 2}
+    if len(valid_groups) < 2:
+        return None, None, False, None, "数据不足"
+    
+    # 提取有效组的数据
+    data_list = [group_data[g] for g in sorted(valid_groups.keys())]
+    group_names = sorted(valid_groups.keys())
+    
+    # 检查有多少组
+    if len(data_list) == 2:
+        # 两组比较：Mann-Whitney U检验（非参数）
+        stat, p_value = stats.mannwhitneyu(data_list[0], data_list[1], alternative='two-sided')
+        test_method = "Mann-Whitney U"
+        
+        # 计算效应量
+        n1, n2 = len(data_list[0]), len(data_list[1])
+        effect_size = 2 * stat / (n1 * n2) - 1
+        
+        # 两两比较结果
+        pairwise_results = []
+        if len(data_list) >= 2:
+            pairwise_results.append({
+                'group1': group_names[0],
+                'group2': group_names[1],
+                'p_value': p_value
+            })
+        
+        return test_method, p_value, p_value < 0.05, pairwise_results, {
+            'groups': group_names,
+            'statistic': stat,
+            'effect_size': effect_size
+        }
+    else:
+        # 多组比较：Kruskal-Wallis检验
+        stat, p_value = stats.kruskal(*data_list)
+        test_method = "Kruskal-Wallis"
+        
+        # 事后两两比较
+        pairwise_results = []
+        for i in range(len(group_names)):
+            for j in range(i+1, len(group_names)):
+                stat_pair, p_pair = stats.mannwhitneyu(data_list[i], data_list[j], alternative='two-sided')
+                pairwise_results.append({
+                    'group1': group_names[i],
+                    'group2': group_names[j],
+                    'p_value': p_pair
+                })
+        
+        return test_method, p_value, p_value < 0.05, pairwise_results, {'groups': group_names}
+
+# 5. 绘图函数
+def plot_celltype_proportions_with_pvalues(data_long, celltype, output_dir, level="sample", 
+                                          p_value_info=None, pairwise_results=None, 
+                                          group_col='state_new', group_order=None):
+    """
+    绘制单个细胞类型的箱线图，并添加两两组间比较的P值
+    """
+    # 过滤特定细胞类型的数据
+    celltype_data = data_long[data_long['celltype'] == celltype].copy()
+    
+    if len(celltype_data) == 0:
+        print(f"  警告: 细胞类型 '{celltype}' 在{level}维度无数据")
+        return None
+    
+    # 获取组名并按照指定的顺序排序
+    if group_order is None:
+        # 如果没有指定顺序，使用默认顺序
+        group_order = ['N', 'AI', 'AA', 'C']
+    
+    # 只保留存在的组
+    existing_groups = [g for g in group_order if g in celltype_data[group_col].unique()]
+    if len(existing_groups) < 2:
+        print(f"  警告: 细胞类型 '{celltype}' 在{level}维度只有{len(existing_groups)}个组，跳过绘图")
+        return None
+    
+    # 计算两两比较的数量
+    pairwise_count = len(pairwise_results) if pairwise_results else 0
+    
+    # 根据两两比较的数量调整图形高度
+    base_height = 8
+    fig_height = base_height + max(0, pairwise_count - 2) * 1.2  # 减小间距系数
+    
+    # 创建图形
+    plt.figure(figsize=(max(8, len(existing_groups)*2.5), fig_height))
+    
+    # 绘制箱线图和小提琴图
+    ax = sns.boxplot(x=group_col, y='proportion', data=celltype_data, 
+                     order=existing_groups, palette='Set2', width=0.6, fliersize=3)
+    sns.stripplot(x=group_col, y='proportion', data=celltype_data, 
+                  order=existing_groups, color='black', size=4, alpha=0.6, jitter=True)
+    
+    # 添加统计信息标题
+    title_parts = [f"Cell Type: {celltype}"]  # 使用英文标题
+    if p_value_info and p_value_info.get('significant', False):
+        test_method = p_value_info.get('test_method', '')
+        p_val = p_value_info.get('p_value', 1)
+        title_parts.append(f"Kruskal-Wallis test: p={p_val:.3e}")
+    
+    plt.title('\n'.join(title_parts), fontsize=14, fontweight='bold')
+    plt.xlabel('State', fontsize=12)  # 使用英文标签
+    plt.ylabel('Cell Proportion (%)', fontsize=12)  # 使用英文标签
+    
+    # 获取数据的范围
+    y_max = celltype_data['proportion'].max()
+    y_min = celltype_data['proportion'].min()
+    y_range = y_max - y_min
+    
+    # 动态计算Y轴范围
+    # 基础比例：为连接线留出40%的空间（增加0.4）
+    y_top = y_max + y_range * 0.4
+    
+    # 如果有很多两两比较，需要更多空间
+    if pairwise_count > 3:
+        y_top = y_max + y_range * (0.4 + 0.08 * (pairwise_count - 3))
+    
+    # 确保至少有一点空间
+    if y_top <= y_max:
+        y_top = y_max + y_range * 0.4
+    
+    plt.ylim(0, y_top)  # 从0开始，确保所有数据和标注都在图内
+    
+    # 添加样本数量标签
+    for i, group in enumerate(existing_groups):
+        group_data_subset = celltype_data[celltype_data[group_col] == group]
+        n = len(group_data_subset)
+        median_val = group_data_subset['proportion'].median()
+        
+        # 在x轴上方添加数量标签
+        label_y = y_max + y_range * 0.1
+        plt.text(i, label_y, f'n={n}\nmedian={median_val:.2f}%', 
+                ha='center', va='bottom', fontsize=10, fontweight='bold')
+    
+    # 添加两两组间比较的P值
+    if pairwise_results and len(pairwise_results) > 0:
+        # 计算图形中的位置
+        y_start = y_max + y_range * 0.2
+        y_step = y_range * 0.05  # 减小间距
+        
+        # 为每对比较添加P值
+        for i, comp in enumerate(pairwise_results):
+            group1 = comp['group1']
+            group2 = comp['group2']
+            p_val = comp['p_value']
+            
+            # 确保组在现有组中
+            if group1 in existing_groups and group2 in existing_groups:
+                # 获取组在x轴上的位置
+                x1 = existing_groups.index(group1)
+                x2 = existing_groups.index(group2)
+                
+                # 计算P值星号表示
+                if p_val < 0.0001:
+                    p_text = '****'
+                elif p_val < 0.001:
+                    p_text = '***'
+                elif p_val < 0.01:
+                    p_text = '**'
+                elif p_val < 0.05:
+                    p_text = '*'
+                else:
+                    p_text = f'p={p_val:.3f}'
+                
+                # 绘制连接线
+                y_pos = y_start + (i * y_step)
+                
+                # 计算连接线的控制点
+                line_y = y_pos
+                
+                # 绘制水平连接线
+                plt.plot([x1, x2], [line_y, line_y], lw=1.5, color='black')
+                
+                # 绘制垂直线端
+                vertical_line_length = 0.008 * y_range
+                plt.plot([x1, x1], [line_y-vertical_line_length, line_y], lw=1.5, color='black')
+                plt.plot([x2, x2], [line_y-vertical_line_length, line_y], lw=1.5, color='black')
+                
+                # 添加P值文本
+                text_y_offset = 0.015 * y_range
+                plt.text((x1 + x2) * 0.5, line_y + text_y_offset, p_text, 
+                        ha='center', va='bottom', fontsize=10, fontweight='bold')
+    
+    # 添加边距，确保所有元素都在图内
+    plt.tight_layout(pad=2.0)  # 增加padding
+    
+    # 保存图形
+    safe_celltype = celltype.replace('/', '_').replace('\\', '_').replace(':', '_')
+    output_file = os.path.join(output_dir, f"{level}_{safe_celltype}_proportion.png")
+    plt.savefig(output_file, dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    return output_file
+
+# 6. 执行样本维度的分析和绘图
+print("\n" + "="*50)
+print("生成样本维度箱线图 (基于state_new分组)")
+print("="*50)
+
+# 设置组顺序
+group_order = ['N', 'AI', 'AA', 'C']
+print(f"组顺序: {group_order}")
+
+sample_stats_results = []
+celltypes = df['celltype'].unique()
+
+for i, celltype in enumerate(celltypes, 1):
+    print(f"处理细胞类型 {i}/{len(celltypes)}: {celltype}")
+    
+    # 执行统计检验
+    test_method, p_value, is_sig, pairwise_results, details = perform_statistical_tests(
+        sample_long, celltype, 'state_new', 'proportion'
+    )
+    
+    # 保存统计结果
+    if p_value is not None:
+        sample_stats_results.append({
+            'celltype': celltype,
+            'test_method': test_method,
+            'p_value': p_value,
+            'significant': is_sig,
+            'pairwise_results': pairwise_results,
+            'details': str(details)
+        })
+    
+    # 绘制图形
+    p_value_info = {
+        'test_method': test_method,
+        'p_value': p_value,
+        'significant': is_sig
+    } if p_value is not None else None
+    
+    # 计算两两比较的数量
+    pairwise_count = len(pairwise_results) if pairwise_results else 0
+    print(f"  两两比较数量: {pairwise_count}")
+    
+    plot_celltype_proportions_with_pvalues(
+        sample_long, celltype, output_dir, "sample", 
+        p_value_info, pairwise_results, 'state_new', group_order
+    )
+
+# 保存样本维度统计结果
+if sample_stats_results:
+    # 创建详细的统计结果DataFrame
+    detailed_stats = []
+    
+    for result in sample_stats_results:
+        celltype = result['celltype']
+        test_method = result['test_method']
+        p_value = result['p_value']
+        is_sig = result['significant']
+        pairwise_results = result.get('pairwise_results', [])
+        
+        # 添加总体检验结果
+        detailed_stats.append({
+            'celltype': celltype,
+            'comparison': 'Overall',
+            'test_method': test_method,
+            'p_value': p_value,
+            'significant': is_sig
+        })
+        
+        # 添加两两比较结果
+        for pair in pairwise_results:
+            detailed_stats.append({
+                'celltype': celltype,
+                'comparison': f"{pair['group1']}_vs_{pair['group2']}",
+                'test_method': 'Mann-Whitney U',
+                'p_value': pair['p_value'],
+                'significant': pair['p_value'] < 0.05
+            })
+    
+    detailed_stats_df = pd.DataFrame(detailed_stats)
+    detailed_stats_df.to_csv(os.path.join(output_dir, "sample_statistical_tests_detailed.csv"), 
+                          index=False, encoding='utf-8-sig')
+    
+    # 也保存简化版的结果
+    simple_stats_df = pd.DataFrame(sample_stats_results)
+    simple_stats_df.to_csv(os.path.join(output_dir, "sample_statistical_tests.csv"), 
+                          index=False, encoding='utf-8-sig')
+    
+    print(f"样本维度统计检验结果已保存到: {output_dir}/sample_statistical_tests.csv")
+    print(f"详细两两比较结果已保存到: {output_dir}/sample_statistical_tests_detailed.csv")
+
+# 7. 生成汇总报告
+print("\n" + "="*50)
+print("生成汇总报告")
+print("="*50)
+
+with open(os.path.join(output_dir, "celltype_analysis_summary.txt"), "w", encoding='utf-8') as f:
+    f.write("细胞类型比例分析汇总报告 (基于state_new)\n")
+    f.write("="*60 + "\n\n")
+    
+    f.write("1. 数据概览\n")
+    f.write("-"*40 + "\n")
+    f.write(f"总细胞数: {total_cells}\n")
+    f.write(f"细胞类型数: {len(celltype_stats)}\n")
+    f.write(f"样本数 (sample_new): {sample_proportions.shape[0]}\n")
+    f.write(f"state_new分组: {state_new_values}\n")
+    f.write(f"样本数量: {len(df['sample_new'].unique())}\n")
+    f.write(f"组顺序: {group_order}\n\n")
+    
+    f.write("2. 细胞类型总体分布\n")
+    f.write("-"*40 + "\n")
+    for _, row in celltype_stats.iterrows():
+        f.write(f"{row['celltype']:25s}: {row['count']:6d} 个细胞 ({row['percentage']:6.2f}%)\n")
+    
+    f.write("\n3. 样本维度统计 (基于state_new)\n")
+    f.write("-"*40 + "\n")
+    if sample_stats_results:
+        sig_count = sum(1 for r in sample_stats_results if r['significant'])
+        f.write(f"显著差异的细胞类型数 (Kruskal-Wallis检验): {sig_count}/{len(sample_stats_results)}\n\n")
+        
+        f.write("显著差异的细胞类型详情:\n")
+        for result in sample_stats_results:
+            if result['significant']:
+                f.write(f"  {result['celltype']}: p={result['p_value']:.3e} ({result['test_method']})\n")
+                
+                # 添加两两比较结果
+                pairwise_results = result.get('pairwise_results', [])
+                if pairwise_results:
+                    f.write("    两两比较结果:\n")
+                    for pair in pairwise_results:
+                        sig_star = ""
+                        p_val = pair['p_value']
+                        if p_val < 0.0001:
+                            sig_star = " (****)"
+                        elif p_val < 0.001:
+                            sig_star = " (***)"
+                        elif p_val < 0.01:
+                            sig_star = " (**)"
+                        elif p_val < 0.05:
+                            sig_star = " (*)"
+                        
+                        f.write(f"      {pair['group1']} vs {pair['group2']}: p={p_val:.3e}{sig_star}\n")
+                f.write("\n")
+    
+    f.write("\n4. 输出文件列表\n")
+    f.write("-"*40 + "\n")
+    f.write("总体统计:\n")
+    f.write(f"  {output_dir}/celltype_overall_statistics.csv\n\n")
+    f.write("样本维度数据:\n")
+    f.write(f"  {output_dir}/sample_celltype_proportions.csv\n")
+    f.write(f"  {output_dir}/sample_statistical_tests.csv\n")
+    f.write(f"  {output_dir}/sample_statistical_tests_detailed.csv\n")
+    f.write(f"  {output_dir}/sample_*.png (箱线图)\n")
+
+print(f"汇总报告已保存到: {output_dir}/celltype_analysis_summary.txt")
+
+# 8. 创建state_new分布统计
+print("\n" + "="*50)
+print("state_new分布统计")
+print("="*50)
+
+state_new_counts = df['state_new'].value_counts().reset_index()
+state_new_counts.columns = ['state_new', 'count']
+state_new_counts['percentage'] = (state_new_counts['count'] / total_cells * 100).round(2)
+
+print(f"\nstate_new分布:")
+for _, row in state_new_counts.iterrows():
+    print(f"  {row['state_new']}: {row['count']} 个细胞 ({row['percentage']:.2f}%)")
+
+state_new_counts.to_csv(os.path.join(output_dir, "state_new_distribution.csv"), 
+                       index=False, encoding='utf-8-sig')
+print(f"state_new分布统计已保存到: {output_dir}/state_new_distribution.csv")
+
+print("\n分析完成!")

@@ -1,0 +1,1 @@
+Rscript /mnt/NexData_file/home/xjs/20260310_XE2510095462-01/spatialEcoTyper/run_spatialecotyper_all_samples.R --input-qs=/mnt/NexData_file/home/xjs/20260310_XE2510095462-01/spatialEcoTyper/all_data_4slides_sample_filtered_reUMAP_2.qs --outdir=/mnt/NexData_file/home/xjs/xutong_spatialEcoTyper --sample-col=sample --celltype-col=annotation

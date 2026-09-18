@@ -1,6 +1,6 @@
-# 单细胞分析代码整理库（tbd）
+# R-Python-bioinformatics-code-archive
 
-本目录汇总服务器上现有的单细胞分析脚本，目标是作为新项目的代码素材库使用。所有文件均为复制件，原始文件没有移动或修改。
+本目录汇总服务器上的单细胞及其他生物信息分析代码，作为新项目的代码素材和来源归档使用。所有文件均为复制件，原始文件没有移动或修改。
 
 ## 推荐使用方式
 
@@ -10,46 +10,56 @@
 step1.qc.R
 step2.global_cluster.R
 step3.annotation.R
-step4.cellchat.R
 ```
 
-R/Seurat 项目可先参考：
+正式单细胞分析入口：
 
-- `00_core_scrna/00_config.R`
-- `00_core_scrna/00_functions.R`
-- `01_qc_clustering_annotation/`
-- `02_subcluster/`
+- R/Seurat：`单细胞标准分析/标准分析/R single cell/`
+- Python/Scanpy：`单细胞标准分析/标准分析/scanpy_pipeline.py`
+- Python 命令行：`单细胞标准分析/标准分析/run_scanpy_pipeline.py`
+- 样本发现：`单细胞标准分析/标准分析/sample_discovery.py`
+- GPU 扩展、C4 专用版和完整使用方式：`单细胞标准分析/标准分析/README.md`
 
-Python/Scanpy 项目可先参考：
-
-- `00_core_scrna/scanpy_pipeline.py`
-- `00_core_scrna/run_scanpy_pipeline.py`
-- `00_core_scrna/sample_discovery.py`
+轨迹及 05–09 专题已提取为 `savebio` 下的同级模板目录。原 QC、全局分析和亚群分析入口均已并入正式 R/Python 单细胞模板；CellChat 已独立为单独分析点。
 
 专题分析入口：
 
-- CellChat：`03_cellchat/core/pip_cellchat.R`
-- Monocle2：`04_trajectory/monocle2/pseudotime.R` 或 `platform_monocle2.analysis.R`
-- CellPhoneDB：`05_cellphonedb/`
-- inferCNV / CopyKAT：`06_infercnv_copykat/`
-- SCENIC / pySCENIC：`07_scenic_regulon/`
-- 打分、富集和可视化：`08_scores_enrichment/`
+- CellChat：独立分析点目录 `../R-cellchat-workflow-template/`，一个完整 R 文件覆盖单样本、双样本和多样本；原始来源保存在 `legacy/original/03_cellchat/`
+- 轨迹/拟时序/RNA velocity：独立目录 `../R-Python-trajectory-workflow-template/`，含 Monocle2、Monocle3、Slingshot、tradeSeq、PAGA、scVelo 及 343 份来源代码索引
+- 轨迹原始平台和项目脚本：`legacy/original/trajectory_source_archive/`，仅用于归档仓库内溯源
+- CellPhoneDB：`../Python-cellphonedb-workflow-template/`
+- inferCNV / CopyKAT：`../R-Python-infercnv-copykat-workflow-template/`
+- specific infercnvpy notebook：已转换为正式 `.py`；原 notebook 保存在 `legacy/original/specific/`
+- SCENIC / pySCENIC：`../R-Python-scenic-regulon-workflow-template/`
+- 打分、富集和可视化：`../R-Python-scores-enrichment-workflow-template/`
+- Visium HD：`../R-visium-hd-workflow-template/`，正式 R/Seurat 入口，默认读取 Space Ranger 8 µm bins；混合空间来源代码保留在其 `source_catalog/`
 
 ## 目录说明
 
 ```text
-00_core_scrna/                    通用配置、函数、Scanpy 流程和样本发现
-01_qc_clustering_annotation/      QC、整合/聚类、marker、注释、比例统计
-02_subcluster/                    亚群聚类、marker、注释和比例统计
-03_cellchat/                      CellChat 主流程、报告模板及项目示例
-04_trajectory/                    Monocle2 和 PAGA 轨迹分析
-05_cellphonedb/                   CellPhoneDB 及可视化辅助脚本
-06_infercnv_copykat/              inferCNV 和 CopyKAT
-07_scenic_regulon/                SCENIC / pySCENIC
-08_scores_enrichment/             score、dotplot、富集及相关报告模板
-09_spatial_related/               与 Xenium/空间转录组直接相关的可复用脚本
+单细胞标准分析/标准分析/          正式 R/Seurat、Python/Scanpy、GPU 与 C4 分析入口
+../R-Python-trajectory-workflow-template/     独立轨迹模板：正式入口、全量来源代码与溯源索引
+../Python-cellphonedb-workflow-template/    CellPhoneDB 及可视化代码素材
+../R-Python-infercnv-copykat-workflow-template/ inferCNV 和 CopyKAT 代码素材
+../R-Python-scenic-regulon-workflow-template/ SCENIC / pySCENIC 代码素材
+../R-Python-scores-enrichment-workflow-template/ 打分、富集与可视化代码素材
+../R-visium-hd-workflow-template/ R/Seurat Visium HD 正式模板及混合空间来源代码
+10_other_users/                   其他人员原始哈希归档及独立模板分配说明
+11_semantic_catalog/              按用途区分同名代码的语义整理层
+legacy/original/                  原样保留的项目特异或平台代码
 legacy_versions/                  内容不同但不建议作为首选的旧版本
 ```
+
+## 同名代码怎么选
+
+不要按文件名直接去重。历史项目里常有多份 `CellChat.R`、`monocle.R` 或 `report.rmd`，名称相同但分别用于单数据集、双组比较、多组比较、绘图或批量运行。
+
+- `11_semantic_catalog/code_catalog.tsv` 提供全库场景索引。
+- `11_semantic_catalog/duplicate_original_names.tsv` 集中列出同名的独立版本。
+- `../R-Python-trajectory-workflow-template/SOURCE_CATALOG.tsv` 单独索引 343 份轨迹相关唯一代码，并区分 Monocle2/3、BEAM、Slingshot、tradeSeq、PAGA、RNA velocity 和 CytoTRACE。
+- `11_semantic_catalog/03_cellchat/` 已把 CellChat 代码按单数据集、双组、多组、组数待确认、比较后处理、绘图和批处理拆开，并使用来源人员与 SHA-256 生成唯一文件名。
+- `10_other_users/code/` 始终保留原始归档；语义整理层只建立逐字节副本和索引。
+- `10_other_users/README.md` 记录 11 个细分类别到各独立模板的完整分配关系。
 
 ## 去重与溯源
 
@@ -79,7 +89,7 @@ legacy_versions/                  内容不同但不建议作为首选的旧版�
 - CellChat、Monocle2、Seurat、CellPhoneDB、inferCNV、SCENIC 的接口会随版本变化，需在当前环境中小规模试运行。
 - 本次只做代码收集、分类、哈希去重和静态整理，没有使用真实数据完整复跑。
 - 没有在已检索范围找到 `cluster_gpu.py`；因此本目录未包含该文件。
-- 没有找到可确认的独立 Monocle3 正式脚本；当前轨迹分析以 Monocle2 和 PAGA 为主。
+- `../R-Python-trajectory-workflow-template/` 已提供 Monocle2、Monocle3、Slingshot、tradeSeq、PAGA 和 scVelo 正式入口；历史来源脚本仍需按当前包版本小规模试运行。
 
 ## 明确排除
 

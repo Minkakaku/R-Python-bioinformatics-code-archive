@@ -1,0 +1,6 @@
+python /mnt/NexData_file/home/hhq/func/proximity_modified.py --input_h5ad /mnt/NexData_file/home/hhq/project/Xenium/XE2508254414-jining/CN/singler/subtype/adata_cn.h5ad --output_dir /mnt/NexData_file/home/hhq/project/Xenium/XE2508254414-jining/nearest_neighbor/epi_subtype/50um_density --target_celltype "Enterocyte-like Epi" "Goblet-like Epi" "OLFM4+ Epi" "Schwann cells" --ident sample --group_key group --celltype_column singler_subtype
+
+
+python /mnt/NexData_file/home/hhq/func/proximity_modified.py --input_h5ad /mnt/NexData_file/home/hhq/project/Xenium/XE2508254414-jining/CN/singler/subtype/adata_cn.h5ad --output_dir /mnt/NexData_file/home/hhq/project/Xenium/XE2508254414-jining/nearest_neighbor/epi_subtype/50um_density --target_celltype "Proliferating Epi" --ident sample --group_key group --celltype_column singler_subtype
+
+python /mnt/NexData_file/home/hhq/func/proximity_modified.py --input_h5ad /mnt/NexData_file/home/hhq/project/Xenium/XE2508254414-jining/CN/singler/subtype/adata_merge_epi_malignant_type.h5ad --output_dir /mnt/NexData_file/home/hhq/project/Xenium/XE2508254414-jining/nearest_neighbor/epi_subtype/50um_density --target_celltype "Tumor cells" --ident sample --group_key group --celltype_column singler_subtype

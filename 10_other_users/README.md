@@ -84,7 +84,7 @@
 ## 常用查询
 
 ```bash
-cd /home/hf/tbd/10_other_users
+cd R-Python-bioinformatics-code-archive/10_other_users
 
 # 查找 GPU 聚类脚本
 grep -i 'cluster_gpu.py' manifest.tsv
@@ -110,3 +110,24 @@ sha256sum -c CHECKSUMS.sha256
 - 校验通过：3657/3657
 - 目录总大小：52957725 bytes
 - 整理日期：2026-07-21
+
+## 独立模板分配
+
+原始 owner/hash 归档继续保留在本目录；以下模板接收的是 `11_semantic_catalog/` 中逐字节相同的语义副本：
+
+| 类别 | 原始文件数 | 模板去向 |
+|---|---:|---|
+| `03_cellchat` | 381 | 保留在归档仓库；CellChat 正式仓库按既定要求只放一份覆盖单/双/多样本的完整 R 代码 |
+| `04_cellphonedb` | 28 | `../../Python-cellphonedb-workflow-template/source_catalog/` |
+| `05_trajectory_monocle` | 281 | `../../R-Python-trajectory-workflow-template/source_catalog/` |
+| `06_trajectory_other` | 21 | `../../R-Python-trajectory-workflow-template/source_catalog/` |
+| `07_infercnv_copykat` | 78 | `../../R-Python-infercnv-copykat-workflow-template/source_catalog/` |
+| `08_scenic_regulon` | 62 | `../../R-Python-scenic-regulon-workflow-template/source_catalog/` |
+| `09_qc_doublet` | 4 | `../../R-scrna-workflow-template/source_catalog/` |
+| `10_scanpy` | 246 | `../../Python-scrna-workflow-template/source_catalog/` |
+| `11_clustering_annotation` | 754 | 按语言分到 R/Python 单细胞模板；Shell 在两边共享 |
+| `12_scores_enrichment` | 294 | `../../R-Python-scores-enrichment-workflow-template/source_catalog/` |
+| `13_spatial_xenium` | 883 | Python/Shell 到 Python Xenium；R/Rmd/Shell 作为来源素材进入 R Visium HD 模板的 `source_catalog/`；Shell 两边共享 |
+| `15_core_scrna` | 625 | 按语言分到 R/Python 单细胞模板；Shell 在两边共享 |
+
+每个模板根目录的 `SOURCE_CATALOG.tsv` 记录 method、scenario、workflow role、owner、原始路径、语义副本、SHA-256 和目标文件。Shell 脚本在跨语言流程中有意复制到两个模板，因此八个模板共有 3068 个副本，对应 2974 个唯一 SHA-256。

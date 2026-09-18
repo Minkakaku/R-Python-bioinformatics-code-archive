@@ -1,0 +1,4 @@
+cp output-XETG00305__0066089__TMA2__20260128__070534/analysis_summary.html TMA2_analysis_summary.html
+cp output-XETG00305__0066101__TMA1__20260128__070534/analysis_summary.html TMA1_analysis_summary.html
+cp output-XETG00546__0065788__04266-POST3__20250919__053836/analysis_summary.html 04266-POST3_analysis_summary.html
+cp output-XETG00546__0065788__TMA__20250919__053836/analysis_summary.html TMA_analysis_summary.html

@@ -1,0 +1,3 @@
+source activate Rstudio
+
+Rscript /mnt/NexData_file/home/liuran/projects/2_VisiumHD/20250630_FWSP20242387_hypopharyngeal/inferCNV_test/infercnv_split.R

@@ -1,0 +1,1 @@
+Rscript /mnt/NexData_file/share/scRNA-tools/pip_cellchat.R --rds /mnt/NexData_file/home/wmx/Project/SC2601290784/20260429/subcluster/All/All_delele_Doublets_raw.rds --outpath /mnt/NexData_file/home/wmx/Project/SC2601290784/20260429/cellchat/ --splitby group --species mouse --comparison "WT_NARDS:KO_NARDS,KO_NARDS:WT_NARDS"

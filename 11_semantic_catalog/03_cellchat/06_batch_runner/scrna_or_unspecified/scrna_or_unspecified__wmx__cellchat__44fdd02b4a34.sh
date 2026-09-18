@@ -1,0 +1,1 @@
+Rscript /mnt/NexData_file/share/scRNA-tools/pip_cellchat.R --rds /mnt/NexData_file/home/wmx/Project/SC2603022014-01/shouhou2/cellchat_mapping_raw.rds --outpath /mnt/NexData_file/home/wmx/Project/SC2603022014-01/shouhou2/cellchat/ --splitby group --species mouse --comparison "TBI_RSG:TBI"

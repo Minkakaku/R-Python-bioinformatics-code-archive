@@ -1,0 +1,268 @@
+---
+title: "<center>Xenium RCTD 反卷积分析报告<center>"
+author: "<center>杭州广科安德生物科技有限公司<center>"
+date: "<center>`r format(Sys.time(), '%Y-%m-%d')`<center>"
+output:
+  html_document:
+    keep_md: false
+    toc: true
+    toc_float: true
+    number_sections: true
+    theme: paper
+    df_print: paged
+params:
+  results_dir: "/mnt/NexData_file/home/lyh/Xenium_aftersale/Sunhandong/20260323_RCTD/plot"
+  rctd_log_png: "/mnt/NexData_file/home/lyh/Xenium_aftersale/Sunhandong/20260323_RCTD/report/RCTD_log.png"
+  report_title: "Xenium RCTD 反卷积分析报告"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center",
+  out.width = "100%"
+)
+
+library(tidyverse)
+library(openxlsx)
+library(knitr)
+library(htmltools)
+library(glue)
+
+results_dir <- normalizePath(params$results_dir, winslash = "/", mustWork = TRUE)
+rctd_log_png <- normalizePath(params$rctd_log_png, winslash = "/", mustWork = TRUE)
+
+if (!dir.exists(results_dir)) {
+  stop("results_dir 不存在：", results_dir)
+}
+
+plot_dir <- results_dir
+spatial_dir <- file.path(results_dir, "spatial_plot")
+
+celltype_sum_file <- file.path(results_dir, "Celltype_sum_group.xlsx")
+celltype_pct_file <- file.path(results_dir, "Celltype_sum_group_pct.xlsx")
+sample_prop_file <- file.path(results_dir, "Cell_Proportion_sample.xlsx")
+marker_file <- file.path(results_dir, "Find_all_markers.xlsx")
+
+celltype_sum <- if (file.exists(celltype_sum_file)) openxlsx::read.xlsx(celltype_sum_file, rowNames = TRUE) else NULL
+celltype_pct <- if (file.exists(celltype_pct_file)) openxlsx::read.xlsx(celltype_pct_file, rowNames = TRUE) else NULL
+sample_prop <- if (file.exists(sample_prop_file)) openxlsx::read.xlsx(sample_prop_file) else NULL
+marker_tbl <- if (file.exists(marker_file)) openxlsx::read.xlsx(marker_file) else NULL
+
+table_preview <- function(df, n = 10) {
+  if (is.null(df)) {
+    return(tags$p(style = "color:#999;", "未检测到对应结果表。"))
+  }
+  knitr::kable(
+    utils::head(df, n),
+    format = "html",
+    table.attr = "class='table table-striped table-sm'"
+  )
+}
+
+image_if_exists <- function(path, title = NULL, width = "100%") {
+  if (!file.exists(path)) {
+    return(tags$p(style = "color:#999;", paste0("文件不存在：", path)))
+  }
+  tagList(
+    if (!is.null(title)) tags$h4(title),
+    tags$img(
+      src = normalizePath(path, winslash = "/", mustWork = TRUE),
+      style = paste0("width:", width, "; border:1px solid #ddd; border-radius:8px; margin:8px 0;")
+    )
+  )
+}
+
+spatial_pngs <- list.files(spatial_dir, pattern = "_spatial\\.png$", full.names = TRUE)
+sample_names <- basename(spatial_pngs) %>% stringr::str_remove("_spatial\\.png$")
+
+spatial_selector_html <- function(paths, labels) {
+  if (length(paths) == 0) {
+    return(tags$p(style = "color:#999;", "未检测到 spatial_plot 图片。"))
+  }
+
+  select_id <- "spatial-sample-selector"
+
+  blocks <- lapply(seq_along(paths), function(i) {
+    div_id <- glue("spatial-block-{i}")
+    tags$div(
+      id = div_id,
+      class = "spatial-sample-block",
+      style = if (i == 1) "display:block;" else "display:none;",
+      tags$h4(labels[[i]]),
+      tags$img(
+        src = normalizePath(paths[[i]], winslash = "/", mustWork = TRUE),
+        style = "width:95%; border:1px solid #ddd; border-radius:8px; margin:8px 0;"
+      )
+    )
+  })
+
+  tagList(
+    tags$div(
+      style = "margin-bottom:12px;",
+      tags$label(`for` = select_id, style = "font-weight:600; margin-right:8px;", "选择样本查看空间图："),
+      tags$select(
+        id = select_id,
+        style = "padding:6px 10px; min-width:240px;",
+        lapply(seq_along(labels), function(i) {
+          tags$option(value = i, labels[[i]])
+        })
+      )
+    ),
+    blocks,
+    tags$script(HTML("
+      (function() {
+        var select = document.getElementById('spatial-sample-selector');
+        if (!select) return;
+        function updateSpatialBlock() {
+          var blocks = document.querySelectorAll('.spatial-sample-block');
+          for (var i = 0; i < blocks.length; i++) {
+            blocks[i].style.display = 'none';
+          }
+          var idx = select.value;
+          var target = document.getElementById('spatial-block-' + idx);
+          if (target) target.style.display = 'block';
+        }
+        select.addEventListener('change', updateSpatialBlock);
+        updateSpatialBlock();
+      })();
+    "))
+  )
+}
+
+n_samples <- length(sample_names)
+n_celltypes <- if (!is.null(celltype_sum)) ncol(celltype_sum) else NA_integer_
+n_groups <- if (!is.null(celltype_sum)) nrow(celltype_sum) else NA_integer_
+```
+
+# `r params$report_title`
+
+## 报告概览
+
+本报告基于 Xenium 空间转录组数据的 RCTD 反卷积结果生成，用于展示空间位置上的细胞类型推断结果，并从空间分布、分组差异和 marker 特征等多个层面进行总结。
+
+### 文件概况
+
+- 检测到的空间样本数：`r n_samples`
+- 检测到的细胞类型数：`r ifelse(is.na(n_celltypes), "未知", n_celltypes)`
+- 检测到的分组数：`r ifelse(is.na(n_groups), "未知", n_groups)`
+- 是否存在 marker 结果表：`r ifelse(!is.null(marker_tbl), "是", "否")`
+
+## RCTD 分析原理
+
+RCTD(Robust Cell Type Decomposition)，是一种用于将单细胞RNA测序数据中的细胞类型注释转移到空间转录组学数据上的方法，于2021年2月18号发表在Nature Biotechnology杂志上，标题为《Robust decomposition of cell type mixtures in spatial transcriptomics》。RCTD 通过整合单细胞和空间转录组学数据，能够较为精确地为空间 spots 分配细胞类型，以便更好地理解空间组织结构中的基因表达情况。
+鉴于 Xenium 是单细胞分辨率的高精度空间转录组平台，本研究采用 RCTD 的 doublet 模式开展反卷积分析，以实现对每个细胞的细胞类型标注。
+
+```{r, results='asis'}
+tagList(
+  image_if_exists(rctd_log_png, width = "85%")
+)
+```
+
+## 结果总览
+
+### 细胞类型分组计数表
+
+```{r, results='asis'}
+table_preview(celltype_sum, n = 10)
+```
+
+### 细胞类型分组比例表
+
+```{r, results='asis'}
+table_preview(celltype_pct, n = 10)
+```
+
+### 样本层面的细胞比例表
+
+```{r, results='asis'}
+table_preview(sample_prop, n = 10)
+```
+
+## 空间分布结果
+
+下面的结果展示了每个样本在空间位置上的细胞注释结果。
+
+```{r, results='asis'}
+spatial_selector_html(spatial_pngs, sample_names)
+```
+
+## 细胞类型整体分布结果
+
+### UMAP 总体分布
+
+```{r, results='asis'}
+tagList(
+  image_if_exists(file.path(results_dir, "celltype_umap.png"), width = "90%")
+)
+```
+
+### 按分组拆分的 UMAP 分布
+
+```{r, results='asis'}
+tagList(
+  image_if_exists(file.path(results_dir, "celltype_umap_split.png"), width = "100%")
+)
+```
+
+## 分组比较结果
+
+### 分组堆叠比例图
+
+```{r, results='asis'}
+tagList(
+  image_if_exists(file.path(results_dir, "celltype_Stacked_group.png"), width = "85%")
+)
+```
+
+### 样本水平比例比较图 1
+
+```{r, results='asis'}
+tagList(
+  image_if_exists(file.path(results_dir, "Cell_Proportion_BoxPlot_sign1.png"), width = "95%")
+)
+```
+
+### 样本水平比例比较图 2
+
+```{r, results='asis'}
+tagList(
+  image_if_exists(file.path(results_dir, "Cell_Proportion_BoxPlot_sign2.png"), width = "95%")
+)
+```
+
+这些结果从不同角度展示了各细胞类型在不同 group 间的组成差异，可用于识别组间富集或减少的细胞类型。
+
+## Marker 结果展示
+
+### Marker 结果表预览
+
+```{r, results='asis'}
+table_preview(marker_tbl, n = 15)
+```
+
+### Marker DotPlot
+
+```{r, results='asis'}
+tagList(
+  image_if_exists(file.path(results_dir, "Marker_DotPlot.png"), width = "100%")
+)
+```
+
+### Marker Volcano Plot
+
+```{r, results='asis'}
+tagList(
+  image_if_exists(file.path(results_dir, "Marker_Volcano.png"), width = "100%")
+)
+```
+
+## 结果解读建议
+
+结合当前结果，建议重点关注以下几个方面：
+
+1. 空间图中不同细胞类型在各样本中的聚集区域是否稳定。
+2. 分组比较图中是否存在显著变化的细胞类型比例。
+3. marker 结果是否支持主要细胞类型的注释合理性。
