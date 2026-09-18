@@ -127,7 +127,7 @@ sha256sum -c CHECKSUMS.sha256
 | `10_scanpy` | 246 | `../../Python-scrna-workflow-template/source_catalog/` |
 | `11_clustering_annotation` | 754 | 按语言分到 R/Python 单细胞模板；Shell 在两边共享 |
 | `12_scores_enrichment` | 294 | `../../R-Python-scores-enrichment-workflow-template/source_catalog/` |
-| `13_spatial_xenium` | 883 | Python/Shell 到 Python Xenium；R/Rmd/Shell 到 spatial-related；Shell 两边共享 |
+| `13_spatial_xenium` | 883 | Python/Shell 到 Python Xenium；R/Rmd/Shell 作为来源素材进入 R Visium HD 模板的 `source_catalog/`；Shell 两边共享 |
 | `15_core_scrna` | 625 | 按语言分到 R/Python 单细胞模板；Shell 在两边共享 |
 
 每个模板根目录的 `SOURCE_CATALOG.tsv` 记录 method、scenario、workflow role、owner、原始路径、语义副本、SHA-256 和目标文件。Shell 脚本在跨语言流程中有意复制到两个模板，因此八个模板共有 3068 个副本，对应 2974 个唯一 SHA-256。

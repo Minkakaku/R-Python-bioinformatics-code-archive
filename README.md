@@ -32,7 +32,7 @@ step3.annotation.R
 - specific infercnvpy notebook：已转换为正式 `.py`；原 notebook 保存在 `legacy/original/specific/`
 - SCENIC / pySCENIC：`../R-Python-scenic-regulon-workflow-template/`
 - 打分、富集和可视化：`../R-Python-scores-enrichment-workflow-template/`
-- 空间转录组补充分析：`../R-spatial-workflow-template/`
+- Visium HD：`../R-visium-hd-workflow-template/`，正式 R/Seurat 入口，默认读取 Space Ranger 8 µm bins；混合空间来源代码保留在其 `source_catalog/`
 
 ## 目录说明
 
@@ -43,7 +43,7 @@ step3.annotation.R
 ../R-Python-infercnv-copykat-workflow-template/ inferCNV 和 CopyKAT 代码素材
 ../R-Python-scenic-regulon-workflow-template/ SCENIC / pySCENIC 代码素材
 ../R-Python-scores-enrichment-workflow-template/ 打分、富集与可视化代码素材
-../R-spatial-workflow-template/ 空间转录组相关补充代码
+../R-visium-hd-workflow-template/ R/Seurat Visium HD 正式模板及混合空间来源代码
 10_other_users/                   其他人员原始哈希归档及独立模板分配说明
 11_semantic_catalog/              按用途区分同名代码的语义整理层
 legacy/original/                  原样保留的项目特异或平台代码
